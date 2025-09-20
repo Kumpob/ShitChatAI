@@ -1645,6 +1645,19 @@ export default function AIChatRoom() {
                         </kbd>
                       </div>
                       <div className="flex justify-between items-center p-2 bg-white rounded">
+                        <span>Previous Regenerate</span>
+                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
+                          -
+                        </kbd>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-white rounded">
+                        <span>Next Regenerate</span>
+                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
+                          =
+                        </kbd>
+                      </div>
+                      
+                      <div className="flex justify-between items-center p-2 bg-white rounded">
                         <span>Next Chat</span>
                         <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
                           Ctrl + ↓
