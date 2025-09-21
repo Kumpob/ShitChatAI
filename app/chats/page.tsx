@@ -1,30 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, JSX } from "react";
 import { marked } from "marked";
 import CustomToast from "./CustomToast";
-
-interface Message {
-  sender: "user" | "ai";
-  text: string;
-}
-
-interface Character {
-  id: string;
-  name: string;
-  alias?: string; // Add alias field
-  personality: string;
-  scenario: string;
-  firstMessage?: string;
-  chats: Chat[];
-}
-
-interface Chat {
-  id: string;
-  title: string;
-  messages: Message[];
-  lastActive: number;
-}
+import { Chat, Character, Message } from "./interfaces";
+import Help from "./HelpModal";
+import ConfirmModal from "./ConfirmModal";
 
 export default function AIChatRoom() {
   // State management
@@ -42,6 +23,8 @@ export default function AIChatRoom() {
     p2: "his",
     p3: "him",
   });
+  const [userThumbnail, setUserThumbnail] = useState<string>("");
+  const [userFullImage, setUserFullImage] = useState<string>("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState<string>("");
   const [editWidth, setEditWidth] = useState<string>("100%");
@@ -50,6 +33,7 @@ export default function AIChatRoom() {
   );
   const [regenText, setRegenText] = useState<string[]>([]);
   const [CurrentRegenText, setCurrentRegenText] = useState<number>(0);
+  const [regenTextChatId, setRegenTextChatId] = useState<string>("");
   const [showHelp, setShowHelp] = useState<boolean>(false);
   const [showRegenerate, setShowRegenerate] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -80,6 +64,10 @@ export default function AIChatRoom() {
     null
   );
 
+  const [temperature, setTemperature] = useState<number>(0.75);
+const [maxTokens, setMaxTokens] = useState<number>(2048);
+const [maxContextLength, setMaxContextLength] = useState<number>(32000);
+
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt =
     "You are a helpful and intelligent AI assistant. Your role is to support {{user}}s by answering questions, offering guidance, solving problems, and providing useful suggestions. \n\n Be clear, respectful, and {{user}}-friendly. Avoid being overly agreeable, if the {{user}}'s request or input could be improved, kindly point that out and offer constructive suggestions. Always ask if {{p1}}'d like to apply any improvement before proceeding. \n\n Focus on accuracy, clarity, and value. If you're unsure about something, be honest. Your goal is to help the {{user}} achieve the best outcome, not just to confirm {{p2}} ideas. Adapt your tone to the context, and always prioritize being genuinely helpful.";
@@ -91,6 +79,12 @@ export default function AIChatRoom() {
   const [characterToDelete, setCharacterToDelete] = useState<string | null>(
     null
   );
+  const [tempCharacterImage, setTempCharacterImage] = useState<{
+    thumbnail?: string;
+    fullImage?: string;
+  }>({});
+  const [isCreatingCharacter, setIsCreatingCharacter] = useState(false);
+
   const [showDeleteChatModal, setShowDeleteChatModal] =
     useState<boolean>(false);
   const [chatToDelete, setChatToDelete] = useState<{
@@ -101,13 +95,14 @@ export default function AIChatRoom() {
     useState<string>("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-  if (scrollContainerRef.current) {
-    requestAnimationFrame(() => {
-      scrollContainerRef.current!.scrollTop = scrollContainerRef.current!.scrollHeight;
-    });
-  }
-}, [messages]);
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      requestAnimationFrame(() => {
+        scrollContainerRef.current!.scrollTop =
+          scrollContainerRef.current!.scrollHeight;
+      });
+    }
+  }, [messages]);
 
   // Load data from localStorage
   useEffect(() => {
@@ -121,6 +116,13 @@ export default function AIChatRoom() {
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
     const savedRegenText = localStorage.getItem("chatRegenText");
     const savedCurrentRegenText = localStorage.getItem("chatCurrentRegenText");
+    const savedregenTextChatId = localStorage.getItem(
+      "chatregenTextChatId"
+    );
+    const savedTemperature = localStorage.getItem("chatTemperature");
+  const savedMaxTokens = localStorage.getItem("chatMaxTokens");
+  const userThumbnail = localStorage.getItem("chatUserThumbnail");
+  const userFullImage = localStorage.getItem("chatUserFullImage");
 
     if (savedCharacters) {
       const parsedCharacters = JSON.parse(savedCharacters);
@@ -172,6 +174,12 @@ export default function AIChatRoom() {
     if (savedRegenText) setRegenText(JSON.parse(savedRegenText));
     if (savedCurrentRegenText)
       setCurrentRegenText(JSON.parse(savedCurrentRegenText));
+    if (savedregenTextChatId)
+      setRegenTextChatId(savedregenTextChatId);
+    if (savedTemperature) setTemperature(parseFloat(savedTemperature));
+  if (savedMaxTokens) setMaxTokens(parseInt(savedMaxTokens));
+    if (userThumbnail) setUserThumbnail(userThumbnail);
+    if (userFullImage) setUserFullImage(userFullImage);
   }, []);
 
   // Save data to localStorage
@@ -189,6 +197,12 @@ export default function AIChatRoom() {
       "chatCurrentRegenText",
       JSON.stringify(CurrentRegenText)
     );
+    localStorage.setItem("chatregenTextChatId", regenTextChatId);
+      localStorage.setItem("chatTemperature", temperature.toString());
+  localStorage.setItem("chatMaxTokens", maxTokens.toString());
+    localStorage.setItem("chatUserThumbnail", userThumbnail);
+    localStorage.setItem("chatUserFullImage", userFullImage);
+
   }, [
     characters,
     userName,
@@ -198,6 +212,13 @@ export default function AIChatRoom() {
     apiKey,
     validated,
     systemPrompt,
+    regenText,
+    CurrentRegenText,
+    regenTextChatId,
+    temperature,
+    maxTokens,
+    userThumbnail,
+    userFullImage
   ]);
 
   // Update messages when chat changes
@@ -325,6 +346,545 @@ export default function AIChatRoom() {
     }
   };
 
+  
+  const handleUserImageUpload = async (): Promise<void> => {
+    try {
+      const file = await selectImageFile();
+      if (!file) return;
+
+      const thumbnailBase64 = await processImage(file, 5, 200);
+      updateUserImage("thumbnail", thumbnailBase64);
+      const fullImageBase64 = await processImage(file, 75, 1200);
+      updateUserImage("fullImage", fullImageBase64);
+
+      setToastMessage("Image uploaded successfully!");
+    } catch (error) {
+      console.error("Error processing image:", error);
+      setToastMessage("Error uploading image");
+    }
+  };
+
+    const updateUserImage = (
+    imageType: "thumbnail" | "fullImage",
+    base64Data: string
+  ): void => {
+      if (imageType === "thumbnail") {
+          setUserThumbnail(base64Data);
+      }
+      else {
+          setUserFullImage(base64Data);
+      }
+  };
+
+  // Add these helper functions to your component
+
+  /**
+   * Main function to handle image upload and processing
+   */
+  const handleImageUpload = async (characterId: string): Promise<void> => {
+    try {
+      const file = await selectImageFile();
+      if (!file) return;
+
+      const thumbnailBase64 = await processImage(file, 5, 200);
+      updateCharacterImage(characterId, "thumbnail", thumbnailBase64);
+      const fullImageBase64 = await processImage(file, 75, 1200);
+      updateCharacterImage(characterId, "fullImage", fullImageBase64);
+
+      setToastMessage("Image uploaded successfully!");
+    } catch (error) {
+      console.error("Error processing image:", error);
+      setToastMessage("Error uploading image");
+    }
+  };
+
+  const handleImageUploadForNewCharacter = async (): Promise<void> => {
+    try {
+      const file = await selectImageFile();
+      if (!file) return;
+
+      const imageBase64Thumb = await processImage(file, 5, 200);
+      const imageBase64Full = await processImage(file, 75, 1200);
+
+      setTempCharacterImage((prev) => ({
+        ...prev,
+        ["thumbnail"]: imageBase64Thumb,
+        ["fullImage"]: imageBase64Full,
+      }));
+
+      setToastMessage(`Image uploaded successfully!`);
+    } catch (error) {
+      console.error("Error processing image:", error);
+      setToastMessage("Error uploading image");
+    }
+  };
+
+  /**
+   * Helper function to create file input and get the selected file
+   */
+  const selectImageFile = (): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          resolve(file);
+        } else {
+          reject(new Error("No file selected"));
+        }
+      };
+
+      input.onerror = () => reject(new Error("File selection failed"));
+      input.click();
+    });
+  };
+
+  /**
+   * Process image to target size and format
+   */
+  const processImage = async (
+    file: File,
+    targetKB: number,
+    maxDimension: number
+  ): Promise<string> => {
+    // Check if browser supports WebP
+    const supportsWebP = await checkWebPSupport();
+    const format = supportsWebP ? "image/webp" : "image/jpeg";
+
+    // Load image
+    const img = await loadImage(URL.createObjectURL(file));
+
+    // Create canvas for processing
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+
+    // Calculate dimensions maintaining aspect ratio
+    const { width, height } = calculateDimensions(
+      img.width,
+      img.height,
+      maxDimension
+    );
+    canvas.width = width;
+    canvas.height = height;
+
+    // Draw and compress image
+    ctx.drawImage(img, 0, 0, width, height);
+
+    // Get compressed image as Base64
+    return optimizeToTargetSize(canvas, targetKB, format);
+  };
+
+  /**
+   * Check if the browser supports WebP format
+   */
+  const checkWebPSupport = async (): Promise<boolean> => {
+    // Create a very small WebP image and see if it loads correctly
+    const webPData =
+      "data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA";
+    const img = new Image();
+
+    return new Promise((resolve) => {
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = webPData;
+    });
+  };
+
+  /**
+   * Load image from URL
+   */
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
+
+  /**
+   * Calculate dimensions maintaining aspect ratio
+   */
+  const calculateDimensions = (
+    originalWidth: number,
+    originalHeight: number,
+    maxDimension: number
+  ): { width: number; height: number } => {
+    let width = originalWidth;
+    let height = originalHeight;
+
+    if (width > height) {
+      if (width > maxDimension) {
+        height = (height * maxDimension) / width;
+        width = maxDimension;
+      }
+    } else {
+      if (height > maxDimension) {
+        width = (width * maxDimension) / height;
+        height = maxDimension;
+      }
+    }
+
+    return { width: Math.round(width), height: Math.round(height) };
+  };
+
+  /**
+   * Optimize image to target file size
+   */
+  const optimizeToTargetSize = (
+    canvas: HTMLCanvasElement,
+    targetKB: number,
+    format: string = "image/webp"
+  ): Promise<string> => {
+    return new Promise((resolve) => {
+      const targetBytes = targetKB * 1024;
+      let minQuality = 0.1;
+      let maxQuality = 1.0;
+      let bestResult = "";
+      let iterations = 0;
+      const maxIterations = 10;
+
+      const optimize = () => {
+        if (iterations >= maxIterations) {
+          resolve(bestResult || canvas.toDataURL(format, 0.7));
+          return;
+        }
+
+        const midQuality = (minQuality + maxQuality) / 2;
+        const imageData = canvas.toDataURL(format, midQuality);
+        const currentSize = estimateBase64Size(imageData);
+
+        if (Math.abs(currentSize - targetBytes) < targetBytes * 0.1) {
+          // Within 10% of target - good enough
+          resolve(imageData);
+          return;
+        }
+
+        if (currentSize > targetBytes) {
+          // Too big, lower quality
+          maxQuality = midQuality;
+        } else {
+          // Too small, increase quality
+          bestResult = imageData;
+          minQuality = midQuality;
+        }
+
+        iterations++;
+        requestAnimationFrame(optimize);
+      };
+
+      optimize();
+    });
+  };
+
+  /**
+   * Estimate binary size from Base64 string
+   */
+  const estimateBase64Size = (base64String: string): number => {
+    // Base64 overhead is ~33%, so actual binary size is about 3/4 of string length
+    return Math.floor((base64String.length * 3) / 4);
+  };
+
+  /**
+   * Update character with new image
+   */
+  const updateCharacterImage = (
+    characterId: string,
+    imageType: "thumbnail" | "fullImage",
+    base64Data: string
+  ): void => {
+    setCharacters((prevCharacters) =>
+      prevCharacters.map((character) =>
+        character.id === characterId
+          ? { ...character, [imageType]: base64Data }
+          : character
+      )
+    );
+  };
+
+  /**
+   * Display character image
+   */
+  const displayCharacterImage = (
+    characterId: string,
+    type: "thumbnail" | "fullImage" = "thumbnail"
+  ): JSX.Element | null => {
+    const character = characters.find((c) => c.id === characterId);
+    if (!character || !character[type]) return null;
+
+    return (
+      <img
+        src={character[type]}
+        alt={character.name}
+        className="w-full h-full object-cover rounded-lg"
+        onClick={() => type === "thumbnail" && showFullImage(characterId)}
+      />
+    );
+  };
+
+  const displayUserImage = (
+    type: "thumbnail" | "fullImage" = "thumbnail"
+  ): JSX.Element | null => {
+    return (
+      <img
+        src={type === "thumbnail" ? userThumbnail : userFullImage}
+        alt={userName}
+        className="w-full h-full object-cover rounded-lg"
+        onClick={() => type === "thumbnail" && showFullImage(userFullImage)}
+      />
+    );
+  };
+
+  /**
+   * Show full image in modal
+   */
+  const showFullImage = (characterId: string): void => {
+    const character = characters.find((c) => c.id === characterId);
+    if (!character || !character.fullImage) return;
+
+    // You can implement a modal here to show the full image
+    // For simplicity, we'll just use a basic alert with the image
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.backgroundColor = "rgba(0,0,0,0.8)";
+    modal.style.display = "flex";
+    modal.style.justifyContent = "center";
+    modal.style.alignItems = "center";
+    modal.style.zIndex = "1000";
+    modal.style.cursor = "pointer";
+
+    const img = document.createElement("img");
+    img.src = character.fullImage;
+    img.alt = character.name;
+    img.style.maxWidth = "90%";
+    img.style.maxHeight = "90%";
+    img.style.objectFit = "contain";
+    img.style.borderRadius = "12px";
+
+    modal.appendChild(img);
+    modal.onclick = () => document.body.removeChild(modal);
+    document.body.appendChild(modal);
+  };
+
+  const ShowUserFullPic = (): void => {
+
+    // You can implement a modal here to show the full image
+    // For simplicity, we'll just use a basic alert with the image
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.backgroundColor = "rgba(0,0,0,0.8)";
+    modal.style.display = "flex";
+    modal.style.justifyContent = "center";
+    modal.style.alignItems = "center";
+    modal.style.zIndex = "1000";
+    modal.style.cursor = "pointer";
+
+    const img = document.createElement("img");
+    img.src = userFullImage;
+    img.alt = userName;
+    img.style.maxWidth = "90%";
+    img.style.maxHeight = "90%";
+    img.style.objectFit = "contain";
+    img.style.borderRadius = "12px";
+
+    modal.appendChild(img);
+    modal.onclick = () => document.body.removeChild(modal);
+    document.body.appendChild(modal);
+  };
+
+  const importCharacterCardFromPNG = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.includes("png")) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        if (!arrayBuffer) return;
+
+        // Extract metadata from PNG
+        const textDecoder = new TextDecoder("utf-8");
+        const dataView = new DataView(arrayBuffer);
+
+        // PNG signature check (first 8 bytes)
+        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+        for (let i = 0; i < 8; i++) {
+          if (dataView.getUint8(i) !== pngSignature[i]) {
+            throw new Error("Not a valid PNG file");
+          }
+        }
+
+        // Look for tEXt chunks that contain character data
+        let offset = 8;
+        let characterData: any = null;
+
+        while (offset < dataView.byteLength) {
+          const length = dataView.getUint32(offset);
+          offset += 4;
+
+          const chunkType = textDecoder.decode(
+            new Uint8Array(arrayBuffer, offset, 4)
+          );
+          offset += 4;
+
+          if (chunkType === "tEXt") {
+            const keywordData = new Uint8Array(arrayBuffer, offset, 80); // Read first 80 bytes for keyword
+            let keywordEnd = 0;
+            while (
+              keywordEnd < keywordData.length &&
+              keywordData[keywordEnd] !== 0
+            ) {
+              keywordEnd++;
+            }
+
+            const keyword = textDecoder.decode(
+              keywordData.slice(0, keywordEnd)
+            );
+
+            if (
+              keyword === "chara" ||
+              keyword === "character" ||
+              keyword === "prompt"
+            ) {
+              const dataStart = offset + keywordEnd + 1; // +1 for null separator
+              const textData = new Uint8Array(
+                arrayBuffer,
+                dataStart,
+                length - keywordEnd - 1
+              );
+              const textContent = textDecoder.decode(textData);
+
+              try {
+                characterData = JSON.parse(textContent);
+                break; // Found character data, stop searching
+              } catch (parseError) {
+                console.log(
+                  "Found text chunk but not valid JSON:",
+                  textContent
+                );
+                // Try to see if it's base64 encoded
+                try {
+                  const decoded = atob(textContent);
+                  characterData = JSON.parse(decoded);
+                  break;
+                } catch (base64Error) {
+                  console.log("Not base64 encoded either");
+                }
+              }
+            }
+          }
+
+          offset += length + 4; // Skip data and CRC
+        }
+
+        if (characterData) {
+          // Extract data with fallbacks (different formats)
+          const name =
+            characterData.name ||
+            characterData.data?.name ||
+            "Imported Character";
+          const firstMessage =
+            characterData.first_mes ||
+            characterData.firstMessage ||
+            characterData.data?.first_mes ||
+            "";
+          const scenario =
+            characterData.scenario || characterData.data?.scenario || "";
+
+          // Combine description and personality
+          const description =
+            characterData.description || characterData.data?.description || "";
+          const personality =
+            characterData.personality || characterData.data?.personality || "";
+          const combinedPersonality = [description, personality]
+            .filter((text) => text.trim())
+            .join("\n\n")
+            .trim();
+
+          // Fill the form fields with imported data
+          setNewCharacterName(name);
+          setNewCharacterAlias("");
+          setNewCharacterFirstMessage(firstMessage);
+          setNewCharacterScenario(scenario);
+          setNewCharacterPersonality(combinedPersonality);
+
+          // Also extract the image itself for use as character image
+          const img = new Image();
+          img.onload = () => {
+            // Create a canvas to process the image
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+
+              // Create both thumbnail and full image versions
+              Promise.all([
+                processImage(file, 5, 200), // Thumbnail
+                processImage(file, 75, 1200), // Full image
+              ]).then(([thumbnail, fullImage]) => {
+                setTempCharacterImage({ thumbnail, fullImage });
+              });
+            }
+          };
+          img.src = URL.createObjectURL(file);
+
+          setToastMessage("Character data extracted from PNG!");
+        } else {
+          // No character data found, just use the image
+          const img = new Image();
+          img.onload = () => {
+            // Create a canvas to process the image
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+
+              // Create both thumbnail and full image versions
+              Promise.all([
+                processImage(file, 5, 200), // Thumbnail
+                processImage(file, 75, 1200), // Full image
+              ]).then(([thumbnail, fullImage]) => {
+                setTempCharacterImage({ thumbnail, fullImage });
+              });
+            }
+          };
+          img.src = URL.createObjectURL(file);
+
+          setToastMessage("PNG imported as image (no character data found)");
+        }
+      } catch (error) {
+        console.error("Error processing PNG file:", error);
+        setToastMessage("Error processing PNG file");
+      }
+    };
+
+    reader.onerror = () => {
+      setToastMessage("Error reading file");
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
   const cancelEdit = () => {
     setEditingIndex(null);
     setEditText("");
@@ -341,13 +901,20 @@ export default function AIChatRoom() {
   };
 
   const SwitchInResponse = (regenIndex: number, index: number) => {
-    setCurrentRegenText(regenIndex);
-    const updatedMessages = messages.slice(0, index);
-    setMessages(updatedMessages);
-    setMessages((prev) => [
-      ...prev,
-      { sender: "ai" as const, text: regenText[regenIndex] },
-    ]);
+    if (regenIndex >= regenText.length) {
+      DeleteAndRegenerateChat(
+        getCurrentCharacter()?.id || "",
+        getCurrentChat()?.id || ""
+      );
+    } else {
+      setCurrentRegenText(regenIndex);
+      const updatedMessages = messages.slice(0, index);
+      setMessages(updatedMessages);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai" as const, text: regenText[regenIndex] },
+      ]);
+    }
   };
   const SwitchDeResponse = (regenIndex: number, index: number) => {
     setCurrentRegenText(regenIndex);
@@ -562,15 +1129,16 @@ export default function AIChatRoom() {
         event.key === "=" &&
         !isTextAreaOrInput &&
         messages.length > 0 &&
-        !event.ctrlKey
+        !event.ctrlKey &&
+        getCurrentChat()?.id === regenTextChatId
       ) {
         event.preventDefault();
 
         // Find the latest message that can be edited (not the loading message)
         const latestMessageIndex = messages.length - 1;
         const latestMessage = messages[latestMessageIndex];
-        if (CurrentRegenText<regenText.length-1){
-        SwitchInResponse(CurrentRegenText+1, latestMessageIndex);
+        if (CurrentRegenText < regenText.length) {
+          SwitchInResponse(CurrentRegenText + 1, latestMessageIndex);
         }
       }
     };
@@ -584,15 +1152,16 @@ export default function AIChatRoom() {
         event.key === "-" &&
         !isTextAreaOrInput &&
         messages.length > 0 &&
-        !event.ctrlKey
+        !event.ctrlKey &&
+        getCurrentChat()?.id === regenTextChatId
       ) {
         event.preventDefault();
 
         // Find the latest message that can be edited (not the loading message)
         const latestMessageIndex = messages.length - 1;
         const latestMessage = messages[latestMessageIndex];
-        if(CurrentRegenText>0){
-          SwitchDeResponse(CurrentRegenText-1, latestMessageIndex);
+        if (CurrentRegenText > 0) {
+          SwitchDeResponse(CurrentRegenText - 1, latestMessageIndex);
         }
       }
     };
@@ -798,52 +1367,59 @@ export default function AIChatRoom() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
+    if (file.type === "application/json" || file.name.endsWith(".json")) {
+      const reader = new FileReader();
 
-    reader.onload = (e) => {
-      try {
-        const fileContent = e.target?.result as string;
-        const cardData = JSON.parse(fileContent);
-        const characterData = cardData.data || cardData;
+      reader.onload = (e) => {
+        try {
+          const fileContent = e.target?.result as string;
+          const cardData = JSON.parse(fileContent);
+          const characterData = cardData.data || cardData;
 
-        // Extract data with fallbacks
-        const name = characterData.name || "Imported Character";
-        const firstMessage =
-          characterData.first_mes || characterData.firstMessage || "";
-        const scenario = characterData.scenario || "";
+          // Extract data with fallbacks
+          const name = characterData.name || "Imported Character";
+          const firstMessage =
+            characterData.first_mes || characterData.firstMessage || "";
+          const scenario = characterData.scenario || "";
 
-        // Combine description and personality (different sites use different fields)
-        const description = characterData.description || "";
-        const personality = characterData.personality || "";
-        const combinedPersonality = [description, personality]
-          .filter((text) => text.trim())
-          .join("\n\n")
-          .trim();
+          // Combine description and personality (different sites use different fields)
+          const description = characterData.description || "";
+          const personality = characterData.personality || "";
+          const combinedPersonality = [description, personality]
+            .filter((text) => text.trim())
+            .join("\n\n")
+            .trim();
 
-        // Fill the form fields with imported data
-        setNewCharacterName(name);
-        setNewCharacterAlias("");
-        setNewCharacterFirstMessage(firstMessage);
-        setNewCharacterScenario(scenario);
-        setNewCharacterPersonality(combinedPersonality);
+          // Fill the form fields with imported data
+          setNewCharacterName(name);
+          setNewCharacterAlias("");
+          setNewCharacterFirstMessage(firstMessage);
+          setNewCharacterScenario(scenario);
+          setNewCharacterPersonality(combinedPersonality);
 
-        // Reset file input
+          // Reset file input
+          event.target.value = "";
+        } catch (error) {
+          alert(
+            "Invalid JSON file. Please select a valid character card JSON file."
+          );
+          console.error("Import error:", error);
+          event.target.value = "";
+        }
+      };
+
+      reader.onerror = () => {
+        alert("Error reading file. Please try again.");
         event.target.value = "";
-      } catch (error) {
-        alert(
-          "Invalid JSON file. Please select a valid character card JSON file."
-        );
-        console.error("Import error:", error);
-        event.target.value = "";
-      }
-    };
+      };
 
-    reader.onerror = () => {
-      alert("Error reading file. Please try again.");
-      event.target.value = "";
-    };
-
-    reader.readAsText(file);
+      reader.readAsText(file);
+    } else if (file.type.includes("image") || file.name.endsWith(".png")) {
+      // Handle PNG files
+      importCharacterCardFromPNG(event);
+    } else {
+      setToastMessage("Unsupported file format");
+    }
   };
 
   // Character and chat management
@@ -860,7 +1436,9 @@ export default function AIChatRoom() {
       alias: newCharacterAlias.trim() || undefined,
       personality: newCharacterPersonality,
       scenario: newCharacterScenario,
-      firstMessage: firstMessage, // Store the first message
+      firstMessage: firstMessage,
+      thumbnail: tempCharacterImage.thumbnail,
+      fullImage: tempCharacterImage.fullImage,
       chats: [
         {
           id: Date.now().toString() + "-chat",
@@ -881,6 +1459,7 @@ export default function AIChatRoom() {
     setNewCharacterScenario("");
     setNewCharacterFirstMessage(""); // Reset first message
     setShowNewCharacterModal(false);
+    setTempCharacterImage({ thumbnail: "", fullImage: "" });
   };
 
   const saveChatName = () => {
@@ -1014,6 +1593,20 @@ export default function AIChatRoom() {
       if (regen) {
         systemMessage += `\n\nRegenerate id differently.`;
       }
+      const requestBody: any = {
+            model: model,
+            messages: [
+              { role: "system", content: systemMessage },
+              ...messagesWithNames,
+            ],
+            temperature: temperature,
+            stream: true,
+          };
+    
+    // Only include max_tokens if it's not 0 (use model default)
+    if (maxTokens !== 0) {
+      requestBody.max_tokens = maxTokens;
+    }
       const response = await fetch(
         "https://openrouter.ai/api/v1/chat/completions",
         {
@@ -1022,14 +1615,7 @@ export default function AIChatRoom() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({
-            model: model,
-            messages: [
-              { role: "system", content: systemMessage },
-              ...messagesWithNames,
-            ],
-            stream: true,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -1106,6 +1692,7 @@ export default function AIChatRoom() {
           setRegenText([...regenText, aiResponse]);
           setCurrentRegenText(CurrentRegenText + 1);
         }
+        setRegenTextChatId(getCurrentChat()?.id || "");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1205,6 +1792,7 @@ export default function AIChatRoom() {
         setMessages(newChat.messages);
       }
     }
+    setShowDeleteChatModal(false);
   };
 
   const formatText = (text: string): string => {
@@ -1297,6 +1885,12 @@ export default function AIChatRoom() {
     setUserPronouns({ p1: "he", p2: "his", p3: "him" });
   };
 
+  const resetPromptSettings = () => {
+  setTemperature(0.75);
+  setMaxTokens(2048);
+  setSystemPrompt("");
+};
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar + Backdrop for mobile */}
@@ -1334,7 +1928,28 @@ export default function AIChatRoom() {
           {characters.map((character) => (
             <div key={character.id} className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-800">
+                {/* Character thumbnail */}
+                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {character.thumbnail ? (
+                    <img
+                      src={character.thumbnail}
+                      alt={character.name}
+                      className="w-full h-full object-cover"
+                      onClick={() => showFullImage(character.id)}
+                    />
+                  ) : (
+                    <span className="text-gray-500 text-xs">📷</span>
+                  )}
+                </div>
+
+                <h3
+                  className="font-semibold text-gray-800 truncate"
+                  title={
+                    character.alias
+                      ? `${character.name} (${character.alias})`
+                      : character.name
+                  }
+                >
                   {character.alias && <>{character.alias} (</>}
                   {character.name}
                   {character.alias && <>)</>}
@@ -1488,7 +2103,9 @@ export default function AIChatRoom() {
             <h1 className="text-xl font-bold text-gray-800">
               {getCurrentCharacter()?.name || "AI"}{" "}
               {getCurrentCharacter()?.alias && (
-                <>({getCurrentCharacter()?.alias})</>
+                <span className="hidden md:inline">
+                  ({getCurrentCharacter()?.alias})
+                </span>
               )}
               : {getCurrentChat()?.title}
             </h1>
@@ -1511,357 +2128,7 @@ export default function AIChatRoom() {
         </div>
 
         {/* Help Modal */}
-        {showHelp && (
-          <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowHelp(false)}
-          >
-            <div
-              className="bg-white rounded-xl w-full max-w-4xl max-h-[80vh] shadow-xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Fixed Header */}
-              <div className="flex-shrink-0 p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    ❓ Help & Guide
-                  </h2>
-                  <button
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                    onClick={() => setShowHelp(false)}
-                  >
-                    &times;
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-6">
-                  {/* Keyboard Shortcuts */}
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-3">
-                      ⌨️ Keyboard Shortcuts
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>
-                          Send Message, Confirm Deletion, and Confirm Edit
-                        </span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          Enter
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>New Line in Input</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          Shift + Enter
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>
-                          Close Modals, Cancel Edit, and Unfocus Input
-                        </span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          ESC
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Focus Input</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          F
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Toggle Sidebar</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          `
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Edit Latest Message</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          E
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Regenerate Latest Message</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          R
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Open Help</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          H
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Open User Settings</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          U
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Open API Settings</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          A
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Open Prompt Settings</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          P
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Create New Character</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          N
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Start New Chat with Current Character</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          C
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Delete Current Chat</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          D
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Open Current Character Settings</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          B
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Edit Current Chat Name</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          V
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Previous Regenerate</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          -
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Next Regenerate</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          =
-                        </kbd>
-                      </div>
-                      
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Next Chat</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          Ctrl + ↓
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Previous Chat</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          Ctrl + ↑
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Next Character</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          Ctrl + →
-                        </kbd>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-white rounded">
-                        <span>Previous Character</span>
-                        <kbd className="bg-gray-200 px-2 py-1 rounded text-xs">
-                          Ctrl + ←
-                        </kbd>
-                      </div>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-3">
-                      💡 Shortcuts don't work when typing in text fields or
-                      inputs!
-                    </p>
-                    <p className="text-xs text-blue-600">
-                      💡 Arrow keys only work when multiple characters/chats
-                      exist!
-                    </p>
-                  </div>
-
-                  {/* Placeholders */}
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-green-800 mb-3">
-                      🔤 Placeholders
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div className="bg-white p-3 rounded">
-                        <strong className="text-green-600">{`{{user}}`}</strong>
-                        <p>Your name (set in User Settings)</p>
-                      </div>
-                      <div className="bg-white p-3 rounded">
-                        <strong className="text-green-600">{`{{char}}`}</strong>
-                        <p>Character's name</p>
-                      </div>
-                      <div className="bg-white p-3 rounded">
-                        <strong className="text-green-600">{`{{p1}}`}</strong>
-                        <p>Your subject pronoun (he/she/they)</p>
-                      </div>
-                      <div className="bg-white p-3 rounded">
-                        <strong className="text-green-600">{`{{p2}}`}</strong>
-                        <p>Your possessive pronoun (his/her/their)</p>
-                      </div>
-                      <div className="bg-white p-3 rounded">
-                        <strong className="text-green-600">{`{{p3}}`}</strong>
-                        <p>Your object pronoun (him/her/them)</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-green-600 mt-3">
-                      💡 Placeholders work in personality, scenario, first
-                      messages, and system prompts!
-                    </p>
-                  </div>
-
-                  {/* Features */}
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-purple-800 mb-3">
-                      ✨ Features
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Multiple Characters:</strong> Create different
-                          AI personas
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Multiple Chats:</strong> Separate
-                          conversations per character
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Streaming Responses:</strong> See AI responses
-                          in real-time
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Message Editing:</strong> Click ✏️ to edit any
-                          message
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Regeneration:</strong> Delete AI messages to
-                          regenerate
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Import Characters:</strong> Import from JSON
-                          character cards
-                        </span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span>•</span>
-                        <span>
-                          <strong>Custom Prompts:</strong> Full control over AI
-                          behavior
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* API Information */}
-                  <div className="bg-orange-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-orange-800 mb-3">
-                      🔌 API Setup
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <strong>1.</strong> Get API key from{" "}
-                        <a
-                          href="https://openrouter.ai/keys"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          OpenRouter
-                        </a>
-                      </p>
-                      <p>
-                        <strong>2.</strong> Paste key in API Settings tab
-                      </p>
-                      <p>
-                        <strong>3.</strong> Click "Validate" to verify
-                      </p>
-                      <p>
-                        <strong>4.</strong> Choose your preferred AI model
-                      </p>
-                      <p className="text-xs text-orange-600 mt-2">
-                        💡 The app uses OpenRouter which supports multiple AI
-                        models through a single API!
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Tips */}
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-yellow-800 mb-3">
-                      💡 Pro Tips
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        • Use ← and → arrow keys to navigate between characters
-                      </p>
-                      <p>
-                        • Use ↑ and ↓ arrow keys to navigate between chats
-                        within a character
-                      </p>
-                      <p>• Press E to quickly edit your latest message</p>
-                      <p>• Press R to regenerate the last AI response</p>
-                      <p>• Press ESC to cancel editing or close modals</p>
-                      <p>
-                        • Use keyboard shortcuts for quick navigation (H for
-                        help, U for user settings, etc.)
-                      </p>
-                      <p>
-                        • Use aliases to distinguish similar character names
-                      </p>
-                      <p>• Import character cards for quick setup</p>
-                      <p>• Customize system prompts for specific AI behavior</p>
-                      <p>• Use placeholders to make prompts dynamic</p>
-                      <p>• Regenerate responses by deleting AI messages</p>
-                      <p>• Edit messages to fix typos or improve responses</p>
-                      <p>• Press ` (backtick) to quickly toggle the sidebar</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fixed Footer */}
-              <div className="flex-shrink-0 border-t border-gray-200 p-6">
-                <button
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors"
-                  onClick={() => setShowHelp(false)}
-                >
-                  Got it! 👍
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {showHelp && <Help setShowHelp={setShowHelp} />}
 
         {/* New Character Modal */}
         {showNewCharacterModal && (
@@ -1885,7 +2152,7 @@ export default function AIChatRoom() {
                   <label className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 cursor-pointer">
                     <input
                       type="file"
-                      accept=".json,application/json"
+                      accept=".json,application/json,.png,image/png"
                       onChange={importCharacterCard}
                       className="hidden"
                       id="character-import"
@@ -1898,6 +2165,59 @@ export default function AIChatRoom() {
                 </div>
 
                 <div className="space-y-4">
+                  <div className="mt-4">
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      Character Images
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      {/* Thumbnail Preview */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                          {tempCharacterImage.thumbnail ? (
+                            <img
+                              src={tempCharacterImage.thumbnail}
+                              alt="Thumbnail preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-gray-500 text-sm">
+                              No thumbnail
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Full Image Preview */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                          {tempCharacterImage.fullImage ? (
+                            <img
+                              src={tempCharacterImage.fullImage}
+                              alt="Full image preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-gray-500 text-sm">
+                              No full image
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px). Click
+                      thumbnail to view full image.
+                    </p>
+                  </div>
+                  <div className="space-y-4 w-full flex flex-row justify-center">
+                    <button
+                      className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                      onClick={() => handleImageUploadForNewCharacter()}
+                    >
+                      Upload Image
+                    </button>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
                       Character Name
@@ -2021,7 +2341,55 @@ export default function AIChatRoom() {
               </div>
 
               {/* Scrollable Content */}
+
               <div className="flex-1 overflow-y-auto p-6">
+                <div className="mt-4">
+                  <h3 className="font-semibold text-gray-700 mb-2">
+                    Character Images
+                  </h3>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    {/* Thumbnail Preview */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                        {displayCharacterImage(
+                          selectedCharacterId || "",
+                          "thumbnail"
+                        ) || (
+                          <span className="text-gray-500 text-sm">
+                            No thumbnail
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Full Image Preview */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                        {displayCharacterImage(
+                          selectedCharacterId || "",
+                          "fullImage"
+                        ) || (
+                          <span className="text-gray-500 text-sm">
+                            No full image
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px). Click
+                    thumbnail to view full image.
+                  </p>
+                </div>
+                <div className="space-y-4 w-full flex flex-row justify-center">
+                  <button
+                    className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                    onClick={() => handleImageUpload(selectedCharacterId || "")}
+                  >
+                    Upload Image
+                  </button>
+                </div>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
@@ -2327,6 +2695,54 @@ export default function AIChatRoom() {
 
                   {settingsTab === "prompt" && (
                     <>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+      <h3 className="font-semibold text-gray-700 mb-3">🌡️ Temperature</h3>
+      <div className="space-y-2">
+        <input
+          type="range"
+          min="0"
+          max="2"
+          step="0.05"
+          value={temperature}
+          onChange={(e) => setTemperature(parseFloat(e.target.value))}
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        />
+        <div className="flex justify-between text-xs text-gray-600">
+          <span>More Focused</span>
+          <span>{temperature.toFixed(2)}</span>
+          <span>More Creative</span>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Lower values = more focused/deterministic, Higher values = more creative/random
+        </p>
+      </div>
+    </div>
+
+    <div className="bg-gray-50 p-4 rounded-lg">
+      <h3 className="font-semibold text-gray-700 mb-3">📏 Max Tokens</h3>
+      <div className="space-y-2">
+        <input
+          type="range"
+          min="0"
+          max="4096"
+          step="128"
+          value={maxTokens}
+          onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        />
+        <div className="flex justify-between text-xs text-gray-600">
+          <span>Short Responses</span>
+          <span>{maxTokens} tokens</span>
+          <span>Long Responses</span>
+        </div>
+    <p className="text-xs text-gray-500 mt-2">
+       Maximum length of AI responses ({maxTokens===0 ? "unlimited" :"approx. "+ Math.round(maxTokens / 4)+" words"})
+    </p>
+    <p className="text-xs text-gray-500 mt-2">
+      Setting this to 0 means that the AI will use the maximum response length supported by the model.
+    </p>
+      </div>
+    </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h3 className="font-semibold text-gray-700 mb-3">
                           📝 System Prompt
@@ -2374,11 +2790,54 @@ export default function AIChatRoom() {
                           🔄 Use Default Roleplay Prompt
                         </button>
                       </div>
+                      <button
+      className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors mt-4"
+      onClick={resetPromptSettings}
+    >
+      🔄 Reset Prompt Settings
+    </button>
                     </>
                   )}
 
                   {settingsTab === "user" && (
                     <>
+                    <div className="mt-4">
+                  <h3 className="font-semibold text-gray-700 mb-2">
+                    Character Images
+                  </h3>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    {/* Thumbnail Preview */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                        {userThumbnail==="" ? <span className="text-gray-500 text-sm">No thumbnail</span> : displayUserImage(
+                          "thumbnail"
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Full Image Preview */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                        {userFullImage==="" ? <span className="text-gray-500 text-sm">No full image</span> : displayUserImage(
+                          "fullImage"
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px). Click
+                    thumbnail to view full image.
+                  </p>
+                </div>
+                <div className="space-y-4 w-full flex flex-row justify-center">
+                  <button
+                    className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                    onClick={() => handleUserImageUpload()}
+                  >
+                    Upload Image
+                  </button>
+                </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-3">
                           <h3 className="font-semibold text-gray-700">
@@ -2495,107 +2954,35 @@ export default function AIChatRoom() {
         )}
         {/* Delete Character Warning Modal */}
         {showDeleteCharacterModal && characterToDelete && (
-          <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowDeleteCharacterModal(false)}
-          >
-            <div
-              className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-red-600">
-                  ⚠️ Delete Character
-                </h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                  onClick={() => setShowDeleteCharacterModal(false)}
-                >
-                  &times;
-                </button>
-              </div>
-
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this character? This will also
+          <ConfirmModal
+            title="⚠️ Delete Character"
+            message=" Are you sure you want to delete this character? This will also
                 delete all chats associated with this character. This action
-                cannot be undone.
-              </p>
-
-              <div className="flex gap-3">
-                <button
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-                  onClick={() => setShowDeleteCharacterModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg transition-colors"
-                  onClick={() => deleteCharacter(characterToDelete)}
-                  autoFocus
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
+                cannot be undone."
+            onConfirm={() => deleteCharacter(characterToDelete)}
+            onCancel={() => setShowDeleteCharacterModal(false)}
+          />
         )}
 
         {/* Delete Chat Warning Modal */}
         {showDeleteChatModal && chatToDelete && (
-          <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowDeleteChatModal(false)}
-          >
-            <div
-              className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-red-600">
-                  ⚠️ Delete Chat
-                </h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                  onClick={() => setShowDeleteChatModal(false)}
-                >
-                  &times;
-                </button>
-              </div>
-
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete this chat? This action cannot be
-                undone.
-              </p>
-
-              <div className="flex gap-3">
-                <button
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-                  onClick={() => setShowDeleteChatModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg transition-colors"
-                  onClick={() => {
-                    if (chatToDelete) {
-                      deleteChat(chatToDelete.characterId, chatToDelete.chatId);
-                      setShowDeleteChatModal(false);
-                      setChatToDelete(null);
-                    }
-                  }}
-                  autoFocus
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfirmModal
+            title="⚠️ Delete Chat"
+            message=" Are you sure you want to delete this chat? This action
+                cannot be undone."
+            onConfirm={() =>
+              deleteChat(chatToDelete.characterId, chatToDelete.chatId)
+            }
+            onCancel={() => setShowDeleteChatModal(false)}
+          />
         )}
         {/* Chat Container */}
         <div className="flex-1 overflow-hidden flex flex-col p-4">
           {/* Chat Messages */}
-          <div ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto mb-4 space-y-4">
+          <div
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto mb-4 space-y-4"
+          >
             {messages.map((msg, i) => (
               <div
                 key={i}
@@ -2610,11 +2997,45 @@ export default function AIChatRoom() {
                       : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
                   }`}
                 >
-                  <div className="text-xs font-semibold mb-2 opacity-80">
-                    {msg.sender === "user"
-                      ? `👤 ${userName}`
-                      : `🤖 ${getCurrentCharacter()?.name || "AI"}`}
-                  </div>
+                  {getCurrentCharacter()?.thumbnail || userThumbnail? (
+                    <div className="flex items-center mb-2">
+                      {msg.sender === "ai"? (
+                      <>
+                        {getCurrentCharacter()?.thumbnail ?(
+                          <img
+                        src={getCurrentCharacter()?.thumbnail}
+                        alt={getCurrentCharacter()?.name}
+                        onClick={() =>
+                          showFullImage(getCurrentCharacter()?.id || "")
+                        }
+                        className="w-8 h-8 rounded-full mr-2"/>
+                        ):(
+                          `🤖 `
+                        )}
+                        </>
+                      ):(
+                        <img
+                        src={userThumbnail}
+                        alt={userFullImage}
+                        onClick={() =>
+                          ShowUserFullPic()
+                        }
+                        className="w-8 h-8 rounded-full mr-2"
+                      />
+                      )}
+                      
+                      <div className="text-sm font-semibold">
+                        {getCurrentCharacter()?.name}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs font-semibold mb-2 opacity-80">
+                      {msg.sender === "user"
+                        ? `👤 ${userName}`
+                        : `🤖 ${getCurrentCharacter()?.name || "AI"}`}
+                    </div>
+                  )}
+
                   {editingIndex === i ? (
                     <div className="space-y-3">
                       <textarea
@@ -2696,33 +3117,36 @@ export default function AIChatRoom() {
                               🗑️ Delete
                             </button>
                           </div>
-                          {i === messages.length - 1 && msg.sender === "ai" && (
-                            <div className="flex items-center space-x-1 text-xs text-gray-500">
-                              <button
-                                className="hover:text-gray-700 disabled:opacity-50"
-                                disabled={CurrentRegenText === 0}
-                                onClick={() =>
-                                  SwitchDeResponse(CurrentRegenText - 1, i)
-                                }
-                              >
-                                ◀
-                              </button>
-                              <span>
-                                {CurrentRegenText + 1}/{regenText.length}
-                              </span>
-                              <button
-                                className="hover:text-gray-700 disabled:opacity-50"
-                                disabled={
-                                  CurrentRegenText === regenText.length - 1
-                                }
-                                onClick={() =>
-                                  SwitchInResponse(CurrentRegenText + 1, i)
-                                }
-                              >
-                                ▶
-                              </button>
-                            </div>
-                          )}
+                          {i === messages.length - 1 &&
+                            msg.sender === "ai" &&
+                            regenTextChatId ===
+                              getCurrentChat()?.id && (
+                              <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                <button
+                                  className="hover:text-gray-700 disabled:opacity-50"
+                                  disabled={CurrentRegenText === 0}
+                                  onClick={() =>
+                                    SwitchDeResponse(CurrentRegenText - 1, i)
+                                  }
+                                >
+                                  ◀
+                                </button>
+                                <span>
+                                  {CurrentRegenText + 1}/{regenText.length}
+                                </span>
+                                <button
+                                  className="hover:text-gray-700 disabled:opacity-50"
+                                  disabled={
+                                    CurrentRegenText === regenText.length
+                                  }
+                                  onClick={() =>
+                                    SwitchInResponse(CurrentRegenText + 1, i)
+                                  }
+                                >
+                                  ▶
+                                </button>
+                              </div>
+                            )}
                         </div>
                       )}
                     </>
