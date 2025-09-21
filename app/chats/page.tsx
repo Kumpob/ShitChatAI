@@ -65,8 +65,7 @@ export default function AIChatRoom() {
   );
 
   const [temperature, setTemperature] = useState<number>(0.75);
-const [maxTokens, setMaxTokens] = useState<number>(2048);
-const [maxContextLength, setMaxContextLength] = useState<number>(32000);
+  const [maxTokens, setMaxTokens] = useState<number>(2048);
 
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt =
@@ -116,13 +115,11 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
     const savedRegenText = localStorage.getItem("chatRegenText");
     const savedCurrentRegenText = localStorage.getItem("chatCurrentRegenText");
-    const savedregenTextChatId = localStorage.getItem(
-      "chatregenTextChatId"
-    );
+    const savedregenTextChatId = localStorage.getItem("chatregenTextChatId");
     const savedTemperature = localStorage.getItem("chatTemperature");
-  const savedMaxTokens = localStorage.getItem("chatMaxTokens");
-  const userThumbnail = localStorage.getItem("chatUserThumbnail");
-  const userFullImage = localStorage.getItem("chatUserFullImage");
+    const savedMaxTokens = localStorage.getItem("chatMaxTokens");
+    const userThumbnail = localStorage.getItem("chatUserThumbnail");
+    const userFullImage = localStorage.getItem("chatUserFullImage");
 
     if (savedCharacters) {
       const parsedCharacters = JSON.parse(savedCharacters);
@@ -174,10 +171,9 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
     if (savedRegenText) setRegenText(JSON.parse(savedRegenText));
     if (savedCurrentRegenText)
       setCurrentRegenText(JSON.parse(savedCurrentRegenText));
-    if (savedregenTextChatId)
-      setRegenTextChatId(savedregenTextChatId);
+    if (savedregenTextChatId) setRegenTextChatId(savedregenTextChatId);
     if (savedTemperature) setTemperature(parseFloat(savedTemperature));
-  if (savedMaxTokens) setMaxTokens(parseInt(savedMaxTokens));
+    if (savedMaxTokens) setMaxTokens(parseInt(savedMaxTokens));
     if (userThumbnail) setUserThumbnail(userThumbnail);
     if (userFullImage) setUserFullImage(userFullImage);
   }, []);
@@ -198,11 +194,10 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
       JSON.stringify(CurrentRegenText)
     );
     localStorage.setItem("chatregenTextChatId", regenTextChatId);
-      localStorage.setItem("chatTemperature", temperature.toString());
-  localStorage.setItem("chatMaxTokens", maxTokens.toString());
+    localStorage.setItem("chatTemperature", temperature.toString());
+    localStorage.setItem("chatMaxTokens", maxTokens.toString());
     localStorage.setItem("chatUserThumbnail", userThumbnail);
     localStorage.setItem("chatUserFullImage", userFullImage);
-
   }, [
     characters,
     userName,
@@ -218,7 +213,7 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
     temperature,
     maxTokens,
     userThumbnail,
-    userFullImage
+    userFullImage,
   ]);
 
   // Update messages when chat changes
@@ -346,7 +341,6 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
     }
   };
 
-  
   const handleUserImageUpload = async (): Promise<void> => {
     try {
       const file = await selectImageFile();
@@ -364,16 +358,15 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
     }
   };
 
-    const updateUserImage = (
+  const updateUserImage = (
     imageType: "thumbnail" | "fullImage",
     base64Data: string
   ): void => {
-      if (imageType === "thumbnail") {
-          setUserThumbnail(base64Data);
-      }
-      else {
-          setUserFullImage(base64Data);
-      }
+    if (imageType === "thumbnail") {
+      setUserThumbnail(base64Data);
+    } else {
+      setUserFullImage(base64Data);
+    }
   };
 
   // Add these helper functions to your component
@@ -674,7 +667,6 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
   };
 
   const ShowUserFullPic = (): void => {
-
     // You can implement a modal here to show the full image
     // For simplicity, we'll just use a basic alert with the image
     const modal = document.createElement("div");
@@ -1594,19 +1586,19 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
         systemMessage += `\n\nRegenerate id differently.`;
       }
       const requestBody: any = {
-            model: model,
-            messages: [
-              { role: "system", content: systemMessage },
-              ...messagesWithNames,
-            ],
-            temperature: temperature,
-            stream: true,
-          };
-    
-    // Only include max_tokens if it's not 0 (use model default)
-    if (maxTokens !== 0) {
-      requestBody.max_tokens = maxTokens;
-    }
+        model: model,
+        messages: [
+          { role: "system", content: systemMessage },
+          ...messagesWithNames,
+        ],
+        temperature: temperature,
+        stream: true,
+      };
+
+      // Only include max_tokens if it's not 0 (use model default)
+      if (maxTokens !== 0) {
+        requestBody.max_tokens = maxTokens;
+      }
       const response = await fetch(
         "https://openrouter.ai/api/v1/chat/completions",
         {
@@ -1886,10 +1878,10 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
   };
 
   const resetPromptSettings = () => {
-  setTemperature(0.75);
-  setMaxTokens(2048);
-  setSystemPrompt("");
-};
+    setTemperature(0.75);
+    setMaxTokens(2048);
+    setSystemPrompt("");
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -2695,54 +2687,70 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
 
                   {settingsTab === "prompt" && (
                     <>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-      <h3 className="font-semibold text-gray-700 mb-3">🌡️ Temperature</h3>
-      <div className="space-y-2">
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.05"
-          value={temperature}
-          onChange={(e) => setTemperature(parseFloat(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-        />
-        <div className="flex justify-between text-xs text-gray-600">
-          <span>More Focused</span>
-          <span>{temperature.toFixed(2)}</span>
-          <span>More Creative</span>
-        </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Lower values = more focused/deterministic, Higher values = more creative/random
-        </p>
-      </div>
-    </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-semibold text-gray-700 mb-3">
+                          🌡️ Temperature
+                        </h3>
+                        <div className="space-y-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="2"
+                            step="0.05"
+                            value={temperature}
+                            onChange={(e) =>
+                              setTemperature(parseFloat(e.target.value))
+                            }
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>More Focused</span>
+                            <span>{temperature.toFixed(2)}</span>
+                            <span>More Creative</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Lower values = more focused/deterministic, Higher
+                            values = more creative/random
+                          </p>
+                        </div>
+                      </div>
 
-    <div className="bg-gray-50 p-4 rounded-lg">
-      <h3 className="font-semibold text-gray-700 mb-3">📏 Max Tokens</h3>
-      <div className="space-y-2">
-        <input
-          type="range"
-          min="0"
-          max="4096"
-          step="128"
-          value={maxTokens}
-          onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-        />
-        <div className="flex justify-between text-xs text-gray-600">
-          <span>Short Responses</span>
-          <span>{maxTokens} tokens</span>
-          <span>Long Responses</span>
-        </div>
-    <p className="text-xs text-gray-500 mt-2">
-       Maximum length of AI responses ({maxTokens===0 ? "unlimited" :"approx. "+ Math.round(maxTokens / 4)+" words"})
-    </p>
-    <p className="text-xs text-gray-500 mt-2">
-      Setting this to 0 means that the AI will use the maximum response length supported by the model.
-    </p>
-      </div>
-    </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-semibold text-gray-700 mb-3">
+                          📏 Max Tokens
+                        </h3>
+                        <div className="space-y-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="4096"
+                            step="128"
+                            value={maxTokens}
+                            onChange={(e) =>
+                              setMaxTokens(parseInt(e.target.value))
+                            }
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>Short Responses</span>
+                            <span>{maxTokens} tokens</span>
+                            <span>Long Responses</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Maximum length of AI responses (
+                            {maxTokens === 0
+                              ? "unlimited"
+                              : "approx. " +
+                                Math.round(maxTokens / 4) +
+                                " words"}
+                            )
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Setting this to 0 means that the AI will use the
+                            maximum response length supported by the model.
+                          </p>
+                        </div>
+                      </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h3 className="font-semibold text-gray-700 mb-3">
                           📝 System Prompt
@@ -2791,53 +2799,61 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
                         </button>
                       </div>
                       <button
-      className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors mt-4"
-      onClick={resetPromptSettings}
-    >
-      🔄 Reset Prompt Settings
-    </button>
+                        className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors mt-4"
+                        onClick={resetPromptSettings}
+                      >
+                        🔄 Reset Prompt Settings
+                      </button>
                     </>
                   )}
 
                   {settingsTab === "user" && (
                     <>
-                    <div className="mt-4">
-                  <h3 className="font-semibold text-gray-700 mb-2">
-                    Character Images
-                  </h3>
+                      <div className="mt-4">
+                        <h3 className="font-semibold text-gray-700 mb-2">
+                          Character Images
+                        </h3>
 
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {/* Thumbnail Preview */}
-                    <div className="flex flex-col items-center">
-                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                        {userThumbnail==="" ? <span className="text-gray-500 text-sm">No thumbnail</span> : displayUserImage(
-                          "thumbnail"
-                        )}
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          {/* Thumbnail Preview */}
+                          <div className="flex flex-col items-center">
+                            <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                              {userThumbnail === "" ? (
+                                <span className="text-gray-500 text-sm">
+                                  No thumbnail
+                                </span>
+                              ) : (
+                                displayUserImage("thumbnail")
+                              )}
+                            </div>
+                          </div>
 
-                    {/* Full Image Preview */}
-                    <div className="flex flex-col items-center">
-                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                        {userFullImage==="" ? <span className="text-gray-500 text-sm">No full image</span> : displayUserImage(
-                          "fullImage"
-                        )}
+                          {/* Full Image Preview */}
+                          <div className="flex flex-col items-center">
+                            <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                              {userFullImage === "" ? (
+                                <span className="text-gray-500 text-sm">
+                                  No full image
+                                </span>
+                              ) : (
+                                displayUserImage("fullImage")
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px).
+                          Click thumbnail to view full image.
+                        </p>
                       </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px). Click
-                    thumbnail to view full image.
-                  </p>
-                </div>
-                <div className="space-y-4 w-full flex flex-row justify-center">
-                  <button
-                    className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                    onClick={() => handleUserImageUpload()}
-                  >
-                    Upload Image
-                  </button>
-                </div>
+                      <div className="space-y-4 w-full flex flex-row justify-center">
+                        <button
+                          className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                          onClick={() => handleUserImageUpload()}
+                        >
+                          Upload Image
+                        </button>
+                      </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-3">
                           <h3 className="font-semibold text-gray-700">
@@ -2997,33 +3013,32 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
                       : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
                   }`}
                 >
-                  {getCurrentCharacter()?.thumbnail || userThumbnail? (
+                  {getCurrentCharacter()?.thumbnail || userThumbnail ? (
                     <div className="flex items-center mb-2">
-                      {msg.sender === "ai"? (
-                      <>
-                        {getCurrentCharacter()?.thumbnail ?(
-                          <img
-                        src={getCurrentCharacter()?.thumbnail}
-                        alt={getCurrentCharacter()?.name}
-                        onClick={() =>
-                          showFullImage(getCurrentCharacter()?.id || "")
-                        }
-                        className="w-8 h-8 rounded-full mr-2"/>
-                        ):(
-                          `🤖 `
-                        )}
+                      {msg.sender === "ai" ? (
+                        <>
+                          {getCurrentCharacter()?.thumbnail ? (
+                            <img
+                              src={getCurrentCharacter()?.thumbnail}
+                              alt={getCurrentCharacter()?.name}
+                              onClick={() =>
+                                showFullImage(getCurrentCharacter()?.id || "")
+                              }
+                              className="w-8 h-8 rounded-full mr-2"
+                            />
+                          ) : (
+                            `🤖 `
+                          )}
                         </>
-                      ):(
+                      ) : (
                         <img
-                        src={userThumbnail}
-                        alt={userFullImage}
-                        onClick={() =>
-                          ShowUserFullPic()
-                        }
-                        className="w-8 h-8 rounded-full mr-2"
-                      />
+                          src={userThumbnail}
+                          alt={userFullImage}
+                          onClick={() => ShowUserFullPic()}
+                          className="w-8 h-8 rounded-full mr-2"
+                        />
                       )}
-                      
+
                       <div className="text-sm font-semibold">
                         {getCurrentCharacter()?.name}
                       </div>
@@ -3119,8 +3134,7 @@ const [maxContextLength, setMaxContextLength] = useState<number>(32000);
                           </div>
                           {i === messages.length - 1 &&
                             msg.sender === "ai" &&
-                            regenTextChatId ===
-                              getCurrentChat()?.id && (
+                            regenTextChatId === getCurrentChat()?.id && (
                               <div className="flex items-center space-x-1 text-xs text-gray-500">
                                 <button
                                   className="hover:text-gray-700 disabled:opacity-50"
