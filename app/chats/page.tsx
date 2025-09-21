@@ -6,6 +6,7 @@ import CustomToast from "./CustomToast";
 import { Chat, Character, Message } from "./interfaces";
 import Help from "./HelpModal";
 import ConfirmModal from "./ConfirmModal";
+import Link from "next/link";
 
 export default function AIChatRoom() {
   // State management
@@ -1902,12 +1903,12 @@ export default function AIChatRoom() {
         }`}
       >
         <div className="flex flex-row p-4 border-b border-gray-200">
-          <a
+          <Link
             className="w-1/8 bg-blue-500 hover:bg-blue-600 text-white mr-2 py-2 px-2 rounded-lg flex items-center justify-center gap-2"
             href="/"
           >
             <div className="font-bold">⇦</div>
-          </a>
+          </Link>
           <button
             className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2"
             onClick={() => setShowNewCharacterModal(true)}

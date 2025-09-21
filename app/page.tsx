@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import FlowingBackground from "./FlowingBackground";
 
 export default function HomePage() {
@@ -17,12 +18,12 @@ export default function HomePage() {
           Just like other AI sites, but shittier.
         </p>
 
-        <a
+        <Link
           href="/chats"
           className="bg-white hover:bg-blue-50 text-blue-600 font-semibold py-4 px-8 rounded-xl shadow-xl transform transition duration-300 ease-in-out hover:scale-105 mt-8"
         >
           Enter
-        </a>
+        </Link>
       </div>
       <footer className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm opacity-50">
         Use it at your own risk.
