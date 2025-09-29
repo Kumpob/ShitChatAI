@@ -10,6 +10,14 @@ import Link from "next/link";
 
 export default function AIChatRoom() {
   // State management
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
+
+  // Check consent only on client side
+  useEffect(() => {
+    const hasConsent = localStorage.getItem("storage-consent") === "true";
+    setConsentGiven(hasConsent);
+  }, []);
+
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
     null
@@ -47,9 +55,9 @@ export default function AIChatRoom() {
   const [newCharacterScenario, setNewCharacterScenario] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isLoadingRef = useRef<boolean>(false);
-  const [settingsTab, setSettingsTab] = useState<"api" | "user" | "prompt">(
-    "user"
-  );
+  const [settingsTab, setSettingsTab] = useState<
+    "api" | "user" | "prompt" | "other"
+  >("user");
   const [model, setModel] = useState<string>("deepseek/deepseek-chat-v3.1");
   const [apiKey, setApiKey] = useState<string>("");
   const [showBotSettings, setShowBotSettings] = useState<boolean>(false);
@@ -96,6 +104,7 @@ export default function AIChatRoom() {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (messages.length === 0) return;
     if (scrollContainerRef.current) {
       requestAnimationFrame(() => {
         scrollContainerRef.current!.scrollTop =
@@ -1884,6 +1893,38 @@ export default function AIChatRoom() {
     setSystemPrompt("");
   };
 
+  if (consentGiven === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">🚫</span>
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">
+            Consent Required
+          </h2>
+
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            To use ShitchatAI, you need to agree to our data storage practices
+            and confirm you're 13 years or older.
+          </p>
+
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
+          >
+            ← Return to Consent Page
+          </Link>
+
+          <p className="text-xs text-gray-500 mt-4">
+            Can't proceed without agreeing to our terms
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar + Backdrop for mobile */}
@@ -2072,8 +2113,19 @@ export default function AIChatRoom() {
             </div>
           ))}
         </div>
-        <div className="p-4 text-center text-gray-400 flex justify-center items-center italic">
-          Use it at your own risk.
+        <div className="p-4 text-center text-gray-400 flex flex-col gap-2 items-center">
+          <Link
+            href="https://forms.gle/q7BPmeVXnuoAJvkg7"
+            className="text-blue-500 hover:text-blue-600 text-sm underline"
+          >
+            Found a bug or have a feedback?
+          </Link>
+          <Link
+            href="/privacy"
+            className="text-blue-500 hover:text-blue-600 text-sm underline"
+          >
+            Privacy Policy
+          </Link>
         </div>
       </div>
 
@@ -2569,6 +2621,16 @@ export default function AIChatRoom() {
                   >
                     📝 Prompt
                   </button>
+                  <button
+                    className={`px-4 py-3 font-medium text-sm ${
+                      settingsTab === "other"
+                        ? "text-blue-600 border-b-2 border-blue-600"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    onClick={() => setSettingsTab("other")}
+                  >
+                    🌟 Other
+                  </button>
                 </div>
               </div>
 
@@ -2805,6 +2867,40 @@ export default function AIChatRoom() {
                       >
                         🔄 Reset Prompt Settings
                       </button>
+                    </>
+                  )}
+
+                  {settingsTab === "other" && (
+                    <>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-green-800 mb-2">
+                          Privacy Policy
+                        </h3>
+                        <Link
+                          href="/privacy"
+                          className="w-full flex justify-center items-center bg-white hover:bg-green-100 text-green-600 hover:text-green-700 border border-green-600 py-2 rounded-lg transition-colors"
+                        >
+                          View Privacy Policy
+                        </Link>
+                      </div>
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-red-800 mb-2">
+                          🗑️ Withdraw Consent
+                        </h3>
+                        <p className="text-red-700 text-sm mb-3">
+                          You can withdraw your consent and delete all data at
+                          any time:
+                        </p>
+                        <button
+                          onClick={() => {
+                            localStorage.clear();
+                            window.location.href = "/";
+                          }}
+                          className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+                        >
+                          Clear All Data & Reset Consent
+                        </button>
+                      </div>
                     </>
                   )}
 

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Help({
   setShowHelp,
 }: {
@@ -298,6 +300,17 @@ export default function Help({
                 <p>• Edit messages to fix typos or improve responses</p>
                 <p>• Press ` (backtick) to quickly toggle the sidebar</p>
               </div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-green-800 mb-3">
+                Privacy Policy
+              </h3>
+              <Link
+                href="/privacy"
+                className="w-full flex justify-center items-center bg-white hover:bg-green-100 text-green-600 hover:text-green-700 border border-green-600 py-2 rounded-lg transition-colors"
+              >
+                View Privacy Policy
+              </Link>
             </div>
           </div>
         </div>
