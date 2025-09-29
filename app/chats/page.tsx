@@ -3265,7 +3265,7 @@ export default function AIChatRoom() {
                             </button>
                             {msg.sender === "ai" && (
                               <button
-                                className="text-xs text-green-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                                className="text-xs text-green-500 hover:text-green-700 transition-colors disabled:opacity-50"
                                 disabled={i == 0 || i != messages.length - 1}
                                 onClick={() =>
                                   DeleteAndRegenerateChat(
