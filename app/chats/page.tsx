@@ -150,7 +150,7 @@ export default function AIChatRoom() {
         name: "AI",
         personality: "",
         scenario: "",
-        firstMessage: "Hello! I'm {{char}}, how can I help you today?",
+        firstMessage: "Hello {{user}}! I'm {{char}}, how can I help you today?",
         chats: [
           {
             id: "default-chat",
@@ -158,7 +158,7 @@ export default function AIChatRoom() {
             messages: [
               {
                 sender: "ai",
-                text: "Hello! I'm {{char}}, how can I help you today?",
+                text: "Hello {{user}}! I'm {{char}}, how can I help you today?",
               },
             ],
             lastActive: Date.now(),
@@ -1370,7 +1370,7 @@ export default function AIChatRoom() {
               messages: [
                 {
                   sender: "ai",
-                  text: "Hello! I'm {{char}}, how can I help you today?",
+                  text: "Hello {{user}}! I'm {{char}}, how can I help you today?",
                 },
               ],
               lastActive: Date.now(),
