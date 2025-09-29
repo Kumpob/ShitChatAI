@@ -725,6 +725,7 @@ export default function AIChatRoom() {
 
         // Extract metadata from PNG
         const textDecoder = new TextDecoder("utf-8");
+        const latin1Decoder = new TextDecoder("latin1"); // For text content
         const dataView = new DataView(arrayBuffer);
 
         // PNG signature check (first 8 bytes)
@@ -773,23 +774,27 @@ export default function AIChatRoom() {
                 dataStart,
                 length - keywordEnd - 1
               );
-              const textContent = textDecoder.decode(textData);
+              const textContent = latin1Decoder.decode(textData); // Use Latin1 for text content
 
               try {
-                characterData = JSON.parse(textContent);
-                break; // Found character data, stop searching
-              } catch (parseError) {
-                console.log(
-                  "Found text chunk but not valid JSON:",
-                  textContent
-                );
-                // Try to see if it's base64 encoded
+                // First try to decode as base64
+                const decoded = atob(textContent);
+                // Convert the base64-decoded string to proper UTF-8
+                const utf8Bytes = new Uint8Array(decoded.length);
+                for (let i = 0; i < decoded.length; i++) {
+                  utf8Bytes[i] = decoded.charCodeAt(i);
+                }
+                const utf8Decoder = new TextDecoder("utf-8");
+                const utf8String = utf8Decoder.decode(utf8Bytes);
+                characterData = JSON.parse(utf8String);
+                break;
+              } catch (base64Error) {
+                // If base64 fails, try parsing directly
                 try {
-                  const decoded = atob(textContent);
-                  characterData = JSON.parse(decoded);
+                  characterData = JSON.parse(textContent);
                   break;
-                } catch (base64Error) {
-                  console.log("Not base64 encoded either");
+                } catch (parseError) {
+                  console.log("Could not parse character data:", parseError);
                 }
               }
             }
@@ -2210,7 +2215,7 @@ export default function AIChatRoom() {
                     📥 Import Character Card
                   </label>
                   <p className="text-xs text-gray-500 text-center mt-2">
-                    Select a JSON character card file (.json)
+                    Select a JSON or Image character card file (.json, .png)
                   </p>
                 </div>
 
