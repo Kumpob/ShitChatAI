@@ -270,7 +270,7 @@ export default function AIChatRoom() {
 
     const firstMessage =
       character.firstMessage ||
-      `Hello! I'm ${character.name}, how can I help you today?`;
+      `Hello ${userName}! I'm ${character.name}, how can I help you today?`;
 
     const newChat: Chat = {
       id: Date.now().toString(),
@@ -3239,7 +3239,7 @@ export default function AIChatRoom() {
                   ) : (
                     <>
                       <div
-                        className="message-content"
+                        className="message-content overflow-x-auto break-words"
                         dangerouslySetInnerHTML={{
                           __html: formatText(msg.text),
                         }}
