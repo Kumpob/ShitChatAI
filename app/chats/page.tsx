@@ -1601,9 +1601,11 @@ export default function AIChatRoom() {
         systemMessage += `\n\nCharacter Personality: ${character.personality}`;
       if (character.scenario.trim())
         systemMessage += `\n\nScenario: ${character.scenario}`;
+      systemMessage += `\n\nUser Name: ${userName}`;
       if (userDescription.trim())
-        systemMessage += `\n\nUser Name: ${userName}`;
         systemMessage += `\n\nUser Description: ${userDescription}`;
+      if (userPronouns.p1.trim() || userPronouns.p2.trim() || userPronouns.p3.trim())
+        systemMessage += `\n\nUser Pronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
       systemMessage = systemMessage
         .replace(/\{\{char\}\}/g, character.name)
         .replace(/\{\{user\}\}/g, userName)
