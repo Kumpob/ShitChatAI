@@ -400,6 +400,11 @@ export default function AIChatRoom() {
       setToastMessage("Error uploading image");
     }
   };
+  
+  const handleImageDelete = (characterId: string): void => {
+    updateCharacterImage(characterId, "thumbnail", "");
+    updateCharacterImage(characterId, "fullImage", "");
+  }
 
   const handleImageUploadForNewCharacter = async (): Promise<void> => {
     try {
@@ -2434,6 +2439,12 @@ export default function AIChatRoom() {
                   >
                     Upload Image
                   </button>
+                  <button
+                    className="bg-red-500 hover:bg-red-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                    onClick={() => handleImageDelete(selectedCharacterId || "")}
+                  >
+                    Remove Image
+                  </button>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -2950,6 +2961,12 @@ export default function AIChatRoom() {
                         >
                           Upload Image
                         </button>
+                        <button
+                          className="bg-red-500 hover:bg-red-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                          onClick={() => {setUserThumbnail(""); setUserFullImage("");}}
+                        >
+                          Remove Image
+                        </button>
                       </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-3">
@@ -3128,12 +3145,18 @@ export default function AIChatRoom() {
                           )}
                         </>
                       ) : (
+                        <>
+                        {userThumbnail ? (
                         <img
                           src={userThumbnail}
                           alt={userFullImage}
                           onClick={() => ShowUserFullPic()}
                           className="w-8 h-8 rounded-full mr-2"
                         />
+                      ) : (
+                        `👤 `
+                      )}
+                      </>
                       )}
 
                       <div className="text-sm font-semibold">
