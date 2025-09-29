@@ -3160,7 +3160,7 @@ export default function AIChatRoom() {
                       )}
 
                       <div className="text-sm font-semibold">
-                        {getCurrentCharacter()?.name}
+                        {msg.sender === "user" ? userName : getCurrentCharacter()?.name || "AI"}
                       </div>
                     </div>
                   ) : (
