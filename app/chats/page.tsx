@@ -320,36 +320,48 @@ export default function AIChatRoom() {
   };
 
   const saveEdit = () => {
-    if (editingIndex !== null) {
-      const updatedMessages = [...messages];
-      updatedMessages[editingIndex].text = editText;
-      setMessages(updatedMessages);
+  if (editingIndex !== null) {
+    const updatedMessages = [...messages];
+    updatedMessages[editingIndex].text = editText;
+    setMessages(updatedMessages);
 
-      // Update characters state
-      if (selectedCharacterId && selectedChatId) {
-        const updatedCharacters = characters.map((character) =>
-          character.id === selectedCharacterId
-            ? {
-                ...character,
-                chats: character.chats.map((chat) =>
-                  chat.id === selectedChatId
-                    ? {
-                        ...chat,
-                        messages: updatedMessages,
-                        lastActive: Date.now(),
-                      }
-                    : chat
-                ),
-              }
-            : character
-        );
-        setCharacters(updatedCharacters);
-      }
+    // Update regenText only if we're editing the last AI message that has regen alternatives
+    const isEditingLastAIMessage = editingIndex === messages.length - 1 && 
+      messages[editingIndex].sender === "ai" &&
+      regenTextChatId === getCurrentChat()?.id &&
+      CurrentRegenText < regenText.length;
 
-      setEditingIndex(null);
-      setEditText("");
+    if (isEditingLastAIMessage) {
+      const updatedRegenText = [...regenText];
+      updatedRegenText[CurrentRegenText] = editText;
+      setRegenText(updatedRegenText);
     }
-  };
+
+    // Update characters state
+    if (selectedCharacterId && selectedChatId) {
+      const updatedCharacters = characters.map((character) =>
+        character.id === selectedCharacterId
+          ? {
+              ...character,
+              chats: character.chats.map((chat) =>
+                chat.id === selectedChatId
+                  ? {
+                      ...chat,
+                      messages: updatedMessages,
+                      lastActive: Date.now(),
+                    }
+                  : chat
+              ),
+            }
+          : character
+      );
+      setCharacters(updatedCharacters);
+    }
+
+    setEditingIndex(null);
+    setEditText("");
+  }
+};
 
   const handleUserImageUpload = async (): Promise<void> => {
     try {
@@ -1506,9 +1518,13 @@ export default function AIChatRoom() {
     if (messages[index].sender === "ai") {
       setShowRegenerate(true);
       setRegenerateFromIndex(index - 1);
+      setRegenText([]);
+      setCurrentRegenText(-1);
     } else {
       setShowRegenerate(false);
       setRegenerateFromIndex(null);
+      setRegenText([messages[index-1].text]);
+      setCurrentRegenText(0);
     }
 
     const updatedMessages = messages.slice(0, index);
@@ -3239,7 +3255,8 @@ export default function AIChatRoom() {
                             </button>
                             {msg.sender === "ai" && (
                               <button
-                                className="text-xs text-green-500 hover:text-red-700 transition-colors"
+                                className="text-xs text-green-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                                disabled={i==0}
                                 onClick={() =>
                                   DeleteAndRegenerateChat(
                                     getCurrentCharacter()?.id || "",
@@ -3251,13 +3268,15 @@ export default function AIChatRoom() {
                               </button>
                             )}
                             <button
-                              className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                              className="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
                               onClick={() => deleteMessage(i)}
+                              disabled={i==0 || i==messages.length-1}
                             >
                               🗑️ Delete
                             </button>
                           </div>
                           {i === messages.length - 1 &&
+                          i!=0 &&
                             msg.sender === "ai" &&
                             regenTextChatId === getCurrentChat()?.id && (
                               <div className="flex items-center space-x-1 text-xs text-gray-500">
