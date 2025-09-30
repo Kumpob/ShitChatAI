@@ -2391,9 +2391,10 @@ export default function AIChatRoom() {
                       placeholder="Image URL: https://example.com/image.jpg"
                       className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
                     />
-    <p className="text-yellow-800 text-xs leading-tight">
-      ⚠️ External images may expose your IP to third-party servers
-    </p>
+                    <p className="text-yellow-800 text-xs leading-tight">
+                      ⚠️ External images may expose your IP to third-party
+                      servers
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
@@ -2596,8 +2597,8 @@ export default function AIChatRoom() {
                     className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
                   />
                   <p className="text-yellow-800 mb-2 text-xs leading-tight">
-      ⚠️ External images may expose your IP to third-party servers
-    </p>
+                    ⚠️ External images may expose your IP to third-party servers
+                  </p>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -3139,8 +3140,9 @@ export default function AIChatRoom() {
                           className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
                         />
                         <p className="text-yellow-800 text-xs leading-tight">
-      ⚠️ External images may expose your IP to third-party servers
-    </p>
+                          ⚠️ External images may expose your IP to third-party
+                          servers
+                        </p>
                       </div>
                       <div className="px-4">
                         {/* Load Presets:

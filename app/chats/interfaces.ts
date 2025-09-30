@@ -22,7 +22,7 @@ export interface Chat {
   lastActive: number;
 }
 
-export interface UserPreset{
+export interface UserPreset {
   id: string;
   name: string;
   description: string;
