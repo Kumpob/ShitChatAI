@@ -21,9 +21,7 @@ export default function PrivacyPolicy() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Privacy Policy
           </h1>
-          <p className="text-lg text-gray-600">
-            Last Updated: 29/09/2025
-          </p>
+          <p className="text-lg text-gray-600">Last Updated: 30/09/2025</p>
         </div>
 
         {/* Policy Content */}
@@ -109,6 +107,29 @@ export default function PrivacyPolicy() {
                     <li>System prompts and preferences</li>
                   </ul>
                 </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                  <h3 className="font-semibold text-green-800 mb-2">
+                    3.3 External Content
+                  </h3>
+                  <ul className="list-disc list-inside text-green-700 space-y-1 text-sm">
+                    <li>Image URLs you provide are stored locally</li>
+                    <li>External images are cached by your browser</li>
+                    <li>We do not modify or re-host external images</li>
+                  </ul>
+                </div>
+                {/* Add to your existing grid in Section 3 */}
+                <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-pink-800 mb-3">
+                    3.4 User Presets
+                  </h3>
+                  <ul className="list-disc list-inside text-pink-700 space-y-1 text-sm">
+                    <li>Saved display names and pronouns</li>
+                    <li>User descriptions and bios</li>
+                    <li>Profile image preferences</li>
+                    <li>Custom preset configurations</li>
+                    <li>Preset names and organization</li>
+                  </ul>
+                </div>
               </div>
             </section>
 
@@ -184,6 +205,23 @@ export default function PrivacyPolicy() {
                   </li>
                   <li>
                     Your conversations remain between your device and OpenRouter
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                <h3 className="font-semibold text-blue-800 mb-2">
+                  5.3 External Image Hosts
+                </h3>
+                <ul className="list-disc list-inside text-blue-700 space-y-1 text-sm">
+                  <li>
+                    Image URLs you provide are loaded directly by your browser
+                  </li>
+                  <li>
+                    External servers may receive your IP address and referrer
+                    information
+                  </li>
+                  <li>
+                    We do not proxy or cache external images on our servers
                   </li>
                 </ul>
               </div>
@@ -290,10 +328,74 @@ export default function PrivacyPolicy() {
               </div>
             </section>
 
+            {/* External Image Loading */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                10. External Image Loading
+              </h2>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <h3 className="font-semibold text-orange-800 mb-3">
+                  Image URL Feature
+                </h3>
+                <p className="text-orange-700 mb-3">
+                  When you provide an image URL, your browser will download the
+                  image directly from the external server.
+                </p>
+                <ul className="list-disc list-inside text-orange-700 space-y-2">
+                  <li>
+                    The external server may see your IP address and browser
+                    information
+                  </li>
+                  <li>
+                    We have no control over how external sites handle your data
+                  </li>
+                  <li>External images are cached locally in your browser</li>
+                  <li>We recommend using trusted image hosting services</li>
+                </ul>
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-3">
+                  <p className="text-yellow-800 text-sm">
+                    <strong>Privacy Tip:</strong> Use direct image links from
+                    privacy-respecting services or self-hosted images to
+                    minimize data exposure.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* User Presets */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                11. User Presets
+              </h2>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h3 className="font-semibold text-purple-800 mb-3">
+                  Preset Storage
+                </h3>
+                <p className="text-purple-700 mb-3">
+                  The preset feature allows you to save and reuse your preferred
+                  settings:
+                </p>
+                <ul className="list-disc list-inside text-purple-700 space-y-2">
+                  <li>Display name and pronouns</li>
+                  <li>User description/bio</li>
+                  <li>Profile images or image URLs</li>
+                  <li>Custom preset names and configurations</li>
+                  <li>Any other settings you choose to save</li>
+                </ul>
+                <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-3">
+                  <p className="text-blue-800 text-sm">
+                    <strong>Control:</strong> You can manage, edit, or delete
+                    your presets at any time through the app interface. All
+                    preset data is stored locally in your browser.
+                  </p>
+                </div>
+              </div>
+            </section>
+
             {/* Your Control Over Data */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                10. Your Control Over Data
+                12. Your Control Over Data
               </h2>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-blue-800 font-semibold mb-3">
@@ -329,7 +431,7 @@ export default function PrivacyPolicy() {
             {/* Children's Privacy */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                11. Children's Privacy
+                13. Children's Privacy
               </h2>
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <p className="text-purple-700">
@@ -344,7 +446,7 @@ export default function PrivacyPolicy() {
             {/* Contact Information */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                12. Data Requests & Contact
+                14. Data Requests & Contact
               </h2>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-green-700 mb-3">
@@ -377,7 +479,7 @@ export default function PrivacyPolicy() {
             {/* Changes to This Policy */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                13. Changes to This Policy
+                15. Changes to This Policy
               </h2>
               <p className="text-gray-700">
                 We may update this Privacy Policy from time to time. We will
@@ -390,7 +492,7 @@ export default function PrivacyPolicy() {
             {/* Security */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                14. Security
+                16. Security
               </h2>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <p className="text-gray-700 mb-3">
@@ -419,7 +521,7 @@ export default function PrivacyPolicy() {
             {/* Acceptance */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-                15. Acceptance
+                17. Acceptance
               </h2>
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <p className="text-orange-700">

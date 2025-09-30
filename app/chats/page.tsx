@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef, JSX } from "react";
 import { marked } from "marked";
 import CustomToast from "./CustomToast";
-import { Chat, Character, Message } from "./interfaces";
+import { Chat, Character, Message, UserPreset } from "./interfaces";
 import Help from "./HelpModal";
 import ConfirmModal from "./ConfirmModal";
 import Link from "next/link";
+import ManagePresets from "./managePreset";
 
 export default function AIChatRoom() {
   // State management
@@ -34,6 +35,22 @@ export default function AIChatRoom() {
   });
   const [userThumbnail, setUserThumbnail] = useState<string>("");
   const [userFullImage, setUserFullImage] = useState<string>("");
+  const [userPresets, setUserPresets] = useState<UserPreset[]>([]);
+  // const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(
+  //   undefined
+  // );
+  // const [defaultPreset, setDefaultPreset] = useState<UserPreset>({
+  //   id: "default",
+  //   name: "You",
+  //   description: "",
+  //   thumbnail: "",
+  //   fullImage: "",
+  //   p1: "he",
+  //   p2: "his",
+  //   p3: "him",
+  // });
+  // const [showPresetList, setShowPresetList] = useState(false);
+
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState<string>("");
   const [editWidth, setEditWidth] = useState<string>("100%");
@@ -130,6 +147,7 @@ export default function AIChatRoom() {
     const savedMaxTokens = localStorage.getItem("chatMaxTokens");
     const userThumbnail = localStorage.getItem("chatUserThumbnail");
     const userFullImage = localStorage.getItem("chatUserFullImage");
+    const savedUserPresets = localStorage.getItem("chatUserPresets");
 
     if (savedCharacters) {
       const parsedCharacters = JSON.parse(savedCharacters);
@@ -186,6 +204,7 @@ export default function AIChatRoom() {
     if (savedMaxTokens) setMaxTokens(parseInt(savedMaxTokens));
     if (userThumbnail) setUserThumbnail(userThumbnail);
     if (userFullImage) setUserFullImage(userFullImage);
+    if (savedUserPresets) setUserPresets(JSON.parse(savedUserPresets));
   }, []);
 
   // Save data to localStorage
@@ -208,6 +227,7 @@ export default function AIChatRoom() {
     localStorage.setItem("chatMaxTokens", maxTokens.toString());
     localStorage.setItem("chatUserThumbnail", userThumbnail);
     localStorage.setItem("chatUserFullImage", userFullImage);
+    localStorage.setItem("chatUserPresets", JSON.stringify(userPresets));
   }, [
     characters,
     userName,
@@ -224,6 +244,7 @@ export default function AIChatRoom() {
     maxTokens,
     userThumbnail,
     userFullImage,
+    userPresets,
   ]);
 
   // Update messages when chat changes
@@ -1604,7 +1625,11 @@ export default function AIChatRoom() {
       systemMessage += `\n\nUser Name: ${userName}`;
       if (userDescription.trim())
         systemMessage += `\n\nUser Description: ${userDescription}`;
-      if (userPronouns.p1.trim() || userPronouns.p2.trim() || userPronouns.p3.trim())
+      if (
+        userPronouns.p1.trim() ||
+        userPronouns.p2.trim() ||
+        userPronouns.p3.trim()
+      )
         systemMessage += `\n\nUser Pronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
       systemMessage = systemMessage
         .replace(/\{\{char\}\}/g, character.name)
@@ -1922,6 +1947,61 @@ export default function AIChatRoom() {
     setTemperature(0.75);
     setMaxTokens(2048);
     setSystemPrompt("");
+  };
+
+  const saveUserPreset = () => {
+    const userPreset: UserPreset = {
+      id: Date.now().toString(),
+      name: userName,
+      description: userDescription,
+      thumbnail: userThumbnail,
+      fullImage: userFullImage,
+      p1: userPronouns.p1,
+      p2: userPronouns.p2,
+      p3: userPronouns.p3,
+    };
+
+    try {
+      localStorage.setItem(
+        "userPresets",
+        JSON.stringify([...userPresets, userPreset])
+      );
+      setUserPresets([...userPresets, userPreset]);
+    } catch (error) {
+      console.error("Error saving user preset:", error);
+    }
+  };
+
+  const loadUserPreset = (preset: UserPreset) => {
+    setUserName(preset.name);
+    setUserPronouns({ p1: preset.p1, p2: preset.p2, p3: preset.p3 });
+    setUserDescription(preset.description);
+    setUserThumbnail(preset.thumbnail);
+    setUserFullImage(preset.fullImage);
+  };
+
+  // const handlePresetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  //   const presetId = event.target.value;
+  //   setSelectedPresetId(presetId);
+
+  //   if (presetId === defaultPreset.id) {
+  //     loadUserPreset(defaultPreset);
+  //   } else {
+  //     const selectedPreset = userPresets.find(
+  //       (preset) => preset.id === presetId
+  //     );
+  //     if (selectedPreset) {
+  //       loadUserPreset(selectedPreset);
+  //     }
+  //   }
+  // };
+
+  const handlePresetDelete = (presetId: string) => {
+    const updatedPresets = userPresets.filter(
+      (preset) => preset.id !== presetId
+    );
+    setUserPresets(updatedPresets);
+    localStorage.setItem("userPresets", JSON.stringify(updatedPresets));
   };
 
   if (consentGiven === false) {
@@ -2294,6 +2374,27 @@ export default function AIChatRoom() {
                       Upload Image
                     </button>
                   </div>
+                  <div className="space-y-4 w-full flex flex-col justify-center">
+                    <p className="text-xs text-gray-500">
+                      Or use the URL from external sources:
+                    </p>
+                    <input
+                      onChange={(e) => {
+                        setTempCharacterImage((prev) => ({
+                          ...prev,
+                          fullImage: e.target.value,
+                          thumbnail: e.target.value,
+                        }));
+                      }}
+                      type="text"
+                      value={tempCharacterImage.fullImage || ""}
+                      placeholder="Image URL: https://example.com/image.jpg"
+                      className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
+                    />
+    <p className="text-yellow-800 text-xs leading-tight">
+      ⚠️ External images may expose your IP to third-party servers
+    </p>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">
                       Character Name
@@ -2471,6 +2572,32 @@ export default function AIChatRoom() {
                   >
                     Remove Image
                   </button>
+                </div>
+                <div className="space-y-4 w-full flex flex-col justify-center">
+                  <p className="text-xs text-gray-500">
+                    Or use the URL from external sources:
+                  </p>
+                  <input
+                    onChange={(e) => {
+                      updateCharacterImage(
+                        selectedCharacterId || "",
+                        "thumbnail",
+                        e.target.value
+                      );
+                      updateCharacterImage(
+                        selectedCharacterId || "",
+                        "fullImage",
+                        e.target.value
+                      );
+                    }}
+                    type="text"
+                    value={getCurrentCharacter()?.fullImage || ""}
+                    placeholder="Image URL: https://example.com/image.jpg"
+                    className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
+                  />
+                  <p className="text-yellow-800 mb-2 text-xs leading-tight">
+      ⚠️ External images may expose your IP to third-party servers
+    </p>
                 </div>
                 <div className="space-y-4">
                   <div>
@@ -2997,6 +3124,46 @@ export default function AIChatRoom() {
                           Remove Image
                         </button>
                       </div>
+                      <div className="space-y-4 w-full flex flex-col justify-center">
+                        <p className="text-xs text-gray-500">
+                          Or use the URL from external sources:
+                        </p>
+                        <input
+                          onChange={(e) => {
+                            setUserFullImage(e.target.value);
+                            setUserThumbnail(e.target.value);
+                          }}
+                          type="text"
+                          value={userFullImage || ""}
+                          placeholder="Image URL: https://example.com/image.jpg"
+                          className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
+                        />
+                        <p className="text-yellow-800 text-xs leading-tight">
+      ⚠️ External images may expose your IP to third-party servers
+    </p>
+                      </div>
+                      <div className="px-4">
+                        {/* Load Presets:
+                        <select
+                          value={selectedPresetId}
+                          onChange={handlePresetChange}
+                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value={defaultPreset.id}>Default</option>
+                          {userPresets.map((preset) => (
+                            <option key={preset.id} value={preset.id}>
+                              {preset.name}
+                            </option>
+                          ))}
+                        </select> */}
+                        <ManagePresets
+                          userPresets={userPresets}
+                          setUserPresets={setUserPresets}
+                          handlePresetDelete={handlePresetDelete}
+                          loadUserPreset={loadUserPreset}
+                        />
+                      </div>
+
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-3">
                           <h3 className="font-semibold text-gray-700">
@@ -3079,7 +3246,12 @@ export default function AIChatRoom() {
                           </div>
                         </div>
                       </div>
-
+                      <button
+                        className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                        onClick={saveUserPreset}
+                      >
+                        Save User Settings
+                      </button>
                       <button
                         className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
                         onClick={resetNames}

@@ -21,3 +21,14 @@ export interface Chat {
   messages: Message[];
   lastActive: number;
 }
+
+export interface UserPreset{
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  fullImage: string;
+  p1: string;
+  p2: string;
+  p3: string;
+}
