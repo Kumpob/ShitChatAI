@@ -9,6 +9,7 @@ import ConfirmModal from "./ConfirmModal";
 import Link from "next/link";
 import ManagePresets from "./managePreset";
 import { defaultpromptRPx, defaultpromptx } from "./prompt";
+import { estimateLocalStorageMaxSize, getLocalStorageUsage } from "./getsize";
 
 export default function AIChatRoom() {
   // State management
@@ -93,7 +94,7 @@ export default function AIChatRoom() {
 
   const [temperature, setTemperature] = useState<number>(0.75);
   const [maxTokens, setMaxTokens] = useState<number>(2048);
-
+  const [maxStorageSize, setMaxStorageSize] = useState<string>("");
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt = defaultpromptx;
   const defaultpromptRP = defaultpromptRPx;
@@ -2268,6 +2269,9 @@ export default function AIChatRoom() {
           >
             Privacy Policy
           </Link>
+          <div className="text-sm">
+            storage used:{" " +getLocalStorageUsage()}{maxStorageSize && " / " + maxStorageSize}
+          </div>
         </div>
       </div>
 
@@ -3102,6 +3106,15 @@ export default function AIChatRoom() {
                         >
                           Clear All Data & Reset Consent
                         </button>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-blue-800 mb-2">
+                          📦 Get Max Storage
+                        </h3>
+                        <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm" onClick={async () => setMaxStorageSize(await estimateLocalStorageMaxSize())}>
+                          Get Max Storage Size
+                        </button>
+                        
                       </div>
                     </>
                   )}
