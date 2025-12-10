@@ -7,7 +7,7 @@
   function helperGetLocalStorageUsage() {
   let total = 0;
 
-  for (let key in localStorage) {
+  for (const key in localStorage) {
     if (!localStorage.hasOwnProperty(key)) continue;
 
     const value = localStorage.getItem(key);
@@ -25,8 +25,8 @@
 }
 
 async function estimateLocalStorageMaxSize() {
-  let testKey = "__storage_test__";
-  let testData = "x".repeat(1024); // 1 KB block
+  const testKey = "__storage_test__";
+  const testData = "x".repeat(1024); // 1 KB block
   let count = 0;
 
   try {
