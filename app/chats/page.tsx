@@ -241,13 +241,14 @@ export default function AIChatRoom() {
     } catch (e) {
       if (isQuotaExceeded(e)) {
         console.error("LocalStorage quota exceeded", e);
-        setToastMessage(
+        alert(
           "Storage is full on this device. Try deleting some characters/images."
         );
+        
         // Optionally: stop trying to save images after this
       } else {
         console.error("Unexpected localStorage error", e);
-        setToastMessage("Unexpected storage error: " + (e as any).name);
+        alert("Unexpected storage error: " + (e as any).name);
       }
     }
   }, [
