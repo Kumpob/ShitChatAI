@@ -242,7 +242,7 @@ export default function AIChatRoom() {
       if (isQuotaExceeded(e)) {
         console.error("LocalStorage quota exceeded", e);
         alert(
-          "Storage is full on this device. Try deleting some characters/images."
+          "Storage is full on this device. This action will not be saved. Please try removing the image."
         );
         
         // Optionally: stop trying to save images after this
@@ -483,6 +483,14 @@ export default function AIChatRoom() {
       setToastMessage("Error uploading image");
     }
   };
+
+  const handleImageDeleteForNewCharacter = (): void => {
+    setTempCharacterImage((prev) => ({
+      ...prev,
+      ["thumbnail"]: "",
+      ["fullImage"]: "",
+    }));
+  }
 
   /**
    * Helper function to create file input and get the selected file
@@ -2395,6 +2403,12 @@ export default function AIChatRoom() {
                       onClick={() => handleImageUploadForNewCharacter()}
                     >
                       Upload Image
+                    </button>
+                    <button
+                      className="bg-red-500 hover:bg-red-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
+                      onClick={() => handleImageDeleteForNewCharacter()}
+                    >
+                      Remove Image
                     </button>
                   </div>
                   <div className="space-y-4 w-full flex flex-col justify-center">
