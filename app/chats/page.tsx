@@ -94,7 +94,10 @@ export default function AIChatRoom() {
 
   const [temperature, setTemperature] = useState<number>(0.75);
   const [maxTokens, setMaxTokens] = useState<number>(2048);
+
   const [maxStorageSize, setMaxStorageSize] = useState<string>("");
+  const [storageUsed, setStorageUsed] = useState<string>("");
+
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt = defaultpromptx;
   const defaultpromptRP = defaultpromptRPx;
@@ -131,14 +134,13 @@ export default function AIChatRoom() {
   }, [messages]);
 
   const isQuotaExceeded = (e: unknown) => {
-  if (!e || typeof e !== "object") return false;
-  const err = e as DOMException;
-  return (
-    err.name === "QuotaExceededError" ||
-    err.name === "NS_ERROR_DOM_QUOTA_REACHED"
-  );
-};
-
+    if (!e || typeof e !== "object") return false;
+    const err = e as DOMException;
+    return (
+      err.name === "QuotaExceededError" ||
+      err.name === "NS_ERROR_DOM_QUOTA_REACHED"
+    );
+  };
 
   // Load data from localStorage
   useEffect(() => {
@@ -219,33 +221,35 @@ export default function AIChatRoom() {
 
   // Save data to localStorage
   useEffect(() => {
-    try{
-    localStorage.setItem("chatCharacters", JSON.stringify(characters));
-    localStorage.setItem("chatUserName", userName);
-    localStorage.setItem("chatUserDescription", userDescription);
-    localStorage.setItem("chatUserPronouns", JSON.stringify(userPronouns));
-    localStorage.setItem("chatModel", model);
-    localStorage.setItem("chatApiKey", apiKey);
-    localStorage.setItem("chatValidated", JSON.stringify(validated));
-    localStorage.setItem("chatSystemPrompt", systemPrompt);
-    localStorage.setItem("chatRegenText", JSON.stringify(regenText));
-    localStorage.setItem(
-      "chatCurrentRegenText",
-      JSON.stringify(CurrentRegenText)
-    );
-    localStorage.setItem("chatregenTextChatId", regenTextChatId);
-    localStorage.setItem("chatTemperature", temperature.toString());
-    localStorage.setItem("chatMaxTokens", maxTokens.toString());
-    localStorage.setItem("chatUserThumbnail", userThumbnail);
-    localStorage.setItem("chatUserFullImage", userFullImage);
-    localStorage.setItem("chatUserPresets", JSON.stringify(userPresets));
+    try {
+      localStorage.setItem("chatCharacters", JSON.stringify(characters));
+      localStorage.setItem("chatUserName", userName);
+      localStorage.setItem("chatUserDescription", userDescription);
+      localStorage.setItem("chatUserPronouns", JSON.stringify(userPronouns));
+      localStorage.setItem("chatModel", model);
+      localStorage.setItem("chatApiKey", apiKey);
+      localStorage.setItem("chatValidated", JSON.stringify(validated));
+      localStorage.setItem("chatSystemPrompt", systemPrompt);
+      localStorage.setItem("chatRegenText", JSON.stringify(regenText));
+      localStorage.setItem(
+        "chatCurrentRegenText",
+        JSON.stringify(CurrentRegenText)
+      );
+      localStorage.setItem("chatregenTextChatId", regenTextChatId);
+      localStorage.setItem("chatTemperature", temperature.toString());
+      localStorage.setItem("chatMaxTokens", maxTokens.toString());
+      localStorage.setItem("chatUserThumbnail", userThumbnail);
+      localStorage.setItem("chatUserFullImage", userFullImage);
+      localStorage.setItem("chatUserPresets", JSON.stringify(userPresets));
+      setStorageUsed(getLocalStorageUsage());
+
     } catch (e) {
       if (isQuotaExceeded(e)) {
         console.error("LocalStorage quota exceeded", e);
         alert(
           "Storage is full on this device. This action will not be saved. Please try removing the image."
         );
-        
+
         // Optionally: stop trying to save images after this
       } else {
         console.error("Unexpected localStorage error", e);
@@ -270,6 +274,13 @@ export default function AIChatRoom() {
     userFullImage,
     userPresets,
   ]);
+
+  useEffect(() => {
+    // This runs only on the client
+      if (typeof window !== "undefined") {
+    setStorageUsed(getLocalStorageUsage());
+  }
+  }, []);
 
   // Update messages when chat changes
   useEffect(() => {
@@ -491,7 +502,7 @@ export default function AIChatRoom() {
       ["thumbnail"]: "",
       ["fullImage"]: "",
     }));
-  }
+  };
 
   /**
    * Helper function to create file input and get the selected file
@@ -2270,7 +2281,8 @@ export default function AIChatRoom() {
             Privacy Policy
           </Link>
           <div className="text-sm">
-            storage used:{" " +getLocalStorageUsage()}{maxStorageSize && " / " + maxStorageSize}
+            storage used: {storageUsed}
+            {maxStorageSize && " / " + maxStorageSize}
           </div>
         </div>
       </div>
@@ -3111,10 +3123,16 @@ export default function AIChatRoom() {
                         <h3 className="font-semibold text-blue-800 mb-2">
                           📦 Get Max Storage
                         </h3>
-                        <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm" onClick={async () => setMaxStorageSize(await estimateLocalStorageMaxSize())}>
+                        <button
+                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+                          onClick={async () =>
+                            setMaxStorageSize(
+                              await estimateLocalStorageMaxSize()
+                            )
+                          }
+                        >
                           Get Max Storage Size
                         </button>
-                        
                       </div>
                     </>
                   )}
