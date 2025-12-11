@@ -1,4 +1,4 @@
-# **Shit-Chat-AI (Custom Character AI Web App)**
+# **ShitChatAI**
 
 A lightweight, client-side AI chat app where you can create characters, customize prompts, upload images, manage chats, and talk to AI models via **OpenRouter**.
 All data (characters, chats, images, presets) is stored **locally in your browser** — nothing is uploaded.
