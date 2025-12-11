@@ -98,6 +98,8 @@ export default function AIChatRoom() {
   const [maxStorageSize, setMaxStorageSize] = useState<string>("");
   const [storageUsed, setStorageUsed] = useState<string>("");
 
+  const [usejpg, setUsejpg] = useState<boolean>(false);
+
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt = defaultpromptx;
   const defaultpromptRP = defaultpromptRPx;
@@ -538,6 +540,7 @@ export default function AIChatRoom() {
     // Check if browser supports WebP
     const supportsWebP = await checkWebPSupport();
     const format = supportsWebP ? "image/webp" : "image/jpeg";
+    setUsejpg(!supportsWebP);
 
     // Load image
     const img = await loadImage(URL.createObjectURL(file));
@@ -2426,6 +2429,13 @@ export default function AIChatRoom() {
                     >
                       Remove Image
                     </button>
+                  </div>
+                  <div>
+                    {usejpg && (
+                      <p className="text-yellow-800 text-xs leading-tight">
+                        ⚠️ This web browser does not support WebP. JPEG is used instead. JPEG is heavier than WebP. Use WebP if possible.
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-4 w-full flex flex-col justify-center">
                     <p className="text-xs text-gray-500">
