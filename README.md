@@ -4,6 +4,10 @@ A lightweight, client-side AI chat app where you can create characters, customiz
 All data (characters, chats, images, presets) is stored **locally in your browser** — nothing is uploaded.
 
 ---
+## TODO:
+Image processing in Safari doesn't convert PNG to WEBP/JPEG.
+
+---
 
 ## 🚀 **Features**
 
@@ -40,7 +44,6 @@ All data (characters, chats, images, presets) is stored **locally in your browse
 * Automatic image compression (WebP/JPEG depending on browser support)
 * Full image viewer modal
 * PNG metadata extraction (for character imports)
-* Mobile-device storage optimization (iOS Safari safe)
 
 ### 💾 **Local Storage Management**
 
