@@ -124,6 +124,7 @@ export default function AIChatRoom() {
   const [newCharacterFirstMessage, setNewCharacterFirstMessage] =
     useState<string>("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const inputContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -134,6 +135,34 @@ export default function AIChatRoom() {
       });
     }
   }, [messages]);
+
+  // Handle virtual keyboard on mobile devices
+  useEffect(() => {
+    const handleFocus = () => {
+      if (inputContainerRef.current) {
+        setTimeout(() => {
+          inputContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        }, 100);
+      }
+    };
+
+    const handleVirtualKeyboardShow = () => {
+      if (inputContainerRef.current) {
+        inputContainerRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    };
+
+    const textarea = document.getElementById("messageInput") as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.addEventListener("focus", handleFocus);
+      window.addEventListener("resize", handleVirtualKeyboardShow);
+      
+      return () => {
+        textarea.removeEventListener("focus", handleFocus);
+        window.removeEventListener("resize", handleVirtualKeyboardShow);
+      };
+    }
+  }, []);
 
   const isQuotaExceeded = (e: unknown) => {
     if (!e || typeof e !== "object") return false;
@@ -1706,6 +1735,7 @@ export default function AIChatRoom() {
         temperature: temperature,
         stream: true,
       };
+      console.log(requestBody);
 
       // Only include max_tokens if it's not 0 (use model default)
       if (maxTokens !== 0) {
@@ -1723,8 +1753,12 @@ export default function AIChatRoom() {
         }
       );
 
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok){
+        // throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+  console.error("Full error response:", errorText);
+  throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+        }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader available");
@@ -3590,7 +3624,7 @@ export default function AIChatRoom() {
           </div>
 
           {/* Input Area */}
-          <div className="bg-white rounded-xl p-3 shadow-lg border border-gray-200">
+          <div ref={inputContainerRef} className="bg-white rounded-xl p-3 shadow-lg border border-gray-200">
             <div className="flex space-x-3">
               <textarea
                 id="messageInput"
