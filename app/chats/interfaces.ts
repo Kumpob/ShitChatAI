@@ -1,6 +1,8 @@
 export interface Message {
   sender: "user" | "ai";
   text: string;
+  regeneratedResponses?: string[];
+  currentResponseIndex?: number;
 }
 
 export interface Character {

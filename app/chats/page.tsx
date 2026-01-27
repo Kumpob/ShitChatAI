@@ -56,14 +56,10 @@ export default function AIChatRoom() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState<string>("");
   const [editWidth, setEditWidth] = useState<string>("100%");
-  const [regenerateFromIndex, setRegenerateFromIndex] = useState<number | null>(
-    null
-  );
-  const [regenText, setRegenText] = useState<string[]>([]);
-  const [CurrentRegenText, setCurrentRegenText] = useState<number>(0);
-  const [regenTextChatId, setRegenTextChatId] = useState<string>("");
+
+
   const [showHelp, setShowHelp] = useState<boolean>(false);
-  const [showRegenerate, setShowRegenerate] = useState<boolean>(false);
+
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showNewCharacterModal, setShowNewCharacterModal] =
     useState<boolean>(false);
@@ -183,9 +179,7 @@ export default function AIChatRoom() {
     const savedApiKey = localStorage.getItem("chatApiKey");
     const savedvalidated = localStorage.getItem("chatValidated");
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
-    const savedRegenText = localStorage.getItem("chatRegenText");
-    const savedCurrentRegenText = localStorage.getItem("chatCurrentRegenText");
-    const savedregenTextChatId = localStorage.getItem("chatregenTextChatId");
+
     const savedTemperature = localStorage.getItem("chatTemperature");
     const savedMaxTokens = localStorage.getItem("chatMaxTokens");
     const userThumbnail = localStorage.getItem("chatUserThumbnail");
@@ -239,10 +233,7 @@ export default function AIChatRoom() {
     if (savedApiKey) setApiKey(savedApiKey);
     if (savedvalidated) setValidated(JSON.parse(savedvalidated));
     if (savedSystemPrompt) setSystemPrompt(savedSystemPrompt);
-    if (savedRegenText) setRegenText(JSON.parse(savedRegenText));
-    if (savedCurrentRegenText)
-      setCurrentRegenText(JSON.parse(savedCurrentRegenText));
-    if (savedregenTextChatId) setRegenTextChatId(savedregenTextChatId);
+
     if (savedTemperature) setTemperature(parseFloat(savedTemperature));
     if (savedMaxTokens) setMaxTokens(parseInt(savedMaxTokens));
     if (userThumbnail) setUserThumbnail(userThumbnail);
@@ -261,12 +252,7 @@ export default function AIChatRoom() {
       localStorage.setItem("chatApiKey", apiKey);
       localStorage.setItem("chatValidated", JSON.stringify(validated));
       localStorage.setItem("chatSystemPrompt", systemPrompt);
-      localStorage.setItem("chatRegenText", JSON.stringify(regenText));
-      localStorage.setItem(
-        "chatCurrentRegenText",
-        JSON.stringify(CurrentRegenText)
-      );
-      localStorage.setItem("chatregenTextChatId", regenTextChatId);
+
       localStorage.setItem("chatTemperature", temperature.toString());
       localStorage.setItem("chatMaxTokens", maxTokens.toString());
       localStorage.setItem("chatUserThumbnail", userThumbnail);
@@ -296,9 +282,7 @@ export default function AIChatRoom() {
     apiKey,
     validated,
     systemPrompt,
-    regenText,
-    CurrentRegenText,
-    regenTextChatId,
+
     temperature,
     maxTokens,
     userThumbnail,
@@ -410,20 +394,22 @@ export default function AIChatRoom() {
     if (editingIndex !== null) {
       const updatedMessages = [...messages];
       updatedMessages[editingIndex].text = editText;
-      setMessages(updatedMessages);
 
-      // Update regenText only if we're editing the last AI message that has regen alternatives
-      const isEditingLastAIMessage =
-        editingIndex === messages.length - 1 &&
-        messages[editingIndex].sender === "ai" &&
-        regenTextChatId === getCurrentChat()?.id &&
-        CurrentRegenText < regenText.length;
 
-      if (isEditingLastAIMessage) {
-        const updatedRegenText = [...regenText];
-        updatedRegenText[CurrentRegenText] = editText;
-        setRegenText(updatedRegenText);
+      // Update regenText in the message itself
+      const currentMsg = updatedMessages[editingIndex];
+      if (
+        currentMsg.sender === "ai" &&
+        currentMsg.regeneratedResponses &&
+        currentMsg.currentResponseIndex !== undefined &&
+        currentMsg.regeneratedResponses.length > currentMsg.currentResponseIndex
+      ) {
+        const updatedRegen = [...currentMsg.regeneratedResponses];
+        updatedRegen[currentMsg.currentResponseIndex] = editText;
+        updatedMessages[editingIndex].regeneratedResponses = updatedRegen;
       }
+
+      setMessages(updatedMessages);
 
       // Update characters state
       if (selectedCharacterId && selectedChatId) {
@@ -1021,30 +1007,37 @@ export default function AIChatRoom() {
     setEditingCharacterId(characterId);
   };
 
-  const SwitchInResponse = (regenIndex: number, index: number) => {
-    if (regenIndex >= regenText.length) {
-      DeleteAndRegenerateChat(
-        getCurrentCharacter()?.id || "",
-        getCurrentChat()?.id || ""
-      );
-    } else {
-      setCurrentRegenText(regenIndex);
-      const updatedMessages = messages.slice(0, index);
+  const switchResponse = (messageIndex: number, responseIndex: number) => {
+    const updatedMessages = [...messages];
+    const msg = updatedMessages[messageIndex];
+
+    if (
+      msg &&
+      msg.regeneratedResponses &&
+      responseIndex >= 0 &&
+      responseIndex < msg.regeneratedResponses.length
+    ) {
+      msg.text = msg.regeneratedResponses[responseIndex];
+      msg.currentResponseIndex = responseIndex;
       setMessages(updatedMessages);
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai" as const, text: regenText[regenIndex] },
-      ]);
+       // Update characters state as well to persist selection
+       if (selectedCharacterId && selectedChatId) {
+        setCharacters((prevChars) => 
+          prevChars.map((c) => 
+            c.id === selectedCharacterId 
+            ? {
+                ...c,
+                chats: c.chats.map((chat) => 
+                  chat.id === selectedChatId 
+                  ? { ...chat, messages: updatedMessages }
+                  : chat
+                )
+              }
+            : c
+          )
+        );
+      }
     }
-  };
-  const SwitchDeResponse = (regenIndex: number, index: number) => {
-    setCurrentRegenText(regenIndex);
-    const updatedMessages = messages.slice(0, index);
-    setMessages(updatedMessages);
-    setMessages((prev) => [
-      ...prev,
-      { sender: "ai" as const, text: regenText[regenIndex] },
-    ]);
   };
   const DeleteAndRegenerateChat = (characterId: string, chatId: string) => {
     // Find the last AI message to regenerate from
@@ -1054,14 +1047,6 @@ export default function AIChatRoom() {
       .pop();
 
     if (lastUserMessageIndex !== undefined && lastUserMessageIndex >= 0) {
-      // Delete everything after the last user message and regenerate
-      if (
-        messages.length > 0 &&
-        messages[messages.length - 1].sender != "user" &&
-        !isLoadingRef.current
-      ) {
-        deleteMessage(lastUserMessageIndex + 1);
-      }
       regenerateResponse(lastUserMessageIndex);
     }
   };
@@ -1250,16 +1235,18 @@ export default function AIChatRoom() {
         event.key === "=" &&
         !isTextAreaOrInput &&
         messages.length > 0 &&
-        !event.ctrlKey &&
-        getCurrentChat()?.id === regenTextChatId
+        !event.ctrlKey
       ) {
         event.preventDefault();
 
-        // Find the latest message that can be edited (not the loading message)
         const latestMessageIndex = messages.length - 1;
         const latestMessage = messages[latestMessageIndex];
-        if (CurrentRegenText < regenText.length) {
-          SwitchInResponse(CurrentRegenText + 1, latestMessageIndex);
+        if (
+            latestMessage.regeneratedResponses &&
+            latestMessage.currentResponseIndex !== undefined &&
+            latestMessage.currentResponseIndex < latestMessage.regeneratedResponses.length - 1
+        ) {
+            switchResponse(latestMessageIndex, latestMessage.currentResponseIndex + 1);
         }
       }
     };
@@ -1273,16 +1260,17 @@ export default function AIChatRoom() {
         event.key === "-" &&
         !isTextAreaOrInput &&
         messages.length > 0 &&
-        !event.ctrlKey &&
-        getCurrentChat()?.id === regenTextChatId
+        !event.ctrlKey
       ) {
         event.preventDefault();
 
-        // Find the latest message that can be edited (not the loading message)
         const latestMessageIndex = messages.length - 1;
         const latestMessage = messages[latestMessageIndex];
-        if (CurrentRegenText > 0) {
-          SwitchDeResponse(CurrentRegenText - 1, latestMessageIndex);
+        if (
+            latestMessage.currentResponseIndex !== undefined &&
+            latestMessage.currentResponseIndex > 0
+        ) {
+            switchResponse(latestMessageIndex, latestMessage.currentResponseIndex - 1);
         }
       }
     };
@@ -1612,17 +1600,8 @@ export default function AIChatRoom() {
   };
 
   const deleteMessage = (index: number) => {
-    if (messages[index].sender === "ai") {
-      setShowRegenerate(true);
-      setRegenerateFromIndex(index - 1);
-      setRegenText([]);
-      setCurrentRegenText(-1);
-    } else {
-      setShowRegenerate(false);
-      setRegenerateFromIndex(null);
-      setRegenText([messages[index - 1].text]);
-      setCurrentRegenText(0);
-    }
+    // Logic simplified, we rely on derived state from messages mostly
+
 
     const updatedMessages = messages.slice(0, index);
     setMessages(updatedMessages);
@@ -1682,6 +1661,7 @@ export default function AIChatRoom() {
     userPronouns,
     userDescription,
     regen,
+    targetMessageIndex,
   }: {
     character: Character;
     messages: Message[];
@@ -1689,6 +1669,7 @@ export default function AIChatRoom() {
     userPronouns: { p1: string; p2: string; p3: string };
     userDescription: string;
     regen: boolean;
+    targetMessageIndex?: number;
   }) => {
     try {
       let systemMessage = systemPrompt;
@@ -1735,8 +1716,7 @@ export default function AIChatRoom() {
         temperature: temperature,
         stream: true,
       };
-      console.log(requestBody);
-
+      
       // Only include max_tokens if it's not 0 (use model default)
       if (maxTokens !== 0) {
         requestBody.max_tokens = maxTokens;
@@ -1754,24 +1734,54 @@ export default function AIChatRoom() {
       );
 
       if (!response.ok){
-        // throw new Error(`HTTP error! status: ${response.status}`);
         const errorText = await response.text();
-  console.error("Full error response:", errorText);
-  throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
-        }
+         console.error("Full error response:", errorText);
+        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader available");
 
       const decoder = new TextDecoder();
       let aiResponse = "";
-
-      if (regen) {
-        setMessages((prev) => [
-          ...prev,
-          { sender: "ai" as const, text: "..." },
-        ]);
-      }
+      
+      // Prepare the message placeholder
+      setMessages((prev) => {
+        const updated = [...prev];
+        
+        if (targetMessageIndex !== undefined && targetMessageIndex >= 0 && targetMessageIndex < updated.length) {
+          // We are appending to an existing message (regenerating)
+           // IMMUTABLE UPDATE: Copy the message and the array
+           const targetMsg = { ...updated[targetMessageIndex] };
+           const currentResponses = targetMsg.regeneratedResponses ? [...targetMsg.regeneratedResponses] : (targetMsg.text ? [targetMsg.text] : []);
+           
+           // Add a placeholder for the new response
+           currentResponses.push("..."); 
+           
+           targetMsg.regeneratedResponses = currentResponses;
+           targetMsg.currentResponseIndex = currentResponses.length - 1;
+           targetMsg.text = "..."; // Show loading...
+           
+           updated[targetMessageIndex] = targetMsg;
+           return updated;
+        } else if (regen || updated.length === messages.length) {
+            // New message (either regen new or normal send)
+            // Note: messages passed to this func does NOT include the new user message if normal send?
+            // Actually sendMessage adds user message then calls this.
+            // If normal send, targetMessageIndex is undefined. We append.
+            
+            return [
+              ...updated,
+               { 
+                  sender: "ai" as const, 
+                  text: "...", 
+                  regeneratedResponses: ["..."],
+                  currentResponseIndex: 0 
+              },
+            ];
+        }
+        return updated;
+      });
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1786,13 +1796,33 @@ export default function AIChatRoom() {
             try {
               const data = JSON.parse(line.slice(6));
               const content = data.choices[0]?.delta?.content;
-              if (content) {
+                if (content) {
                 aiResponse += content;
                 setMessages((prev) => {
-                  const updated = [
-                    ...prev.slice(0, -1),
-                    { sender: "ai" as const, text: aiResponse },
-                  ];
+                  const updated = [...prev];
+                  let targetIdx = targetMessageIndex;
+                  
+                  // If we didn't have a target index, it's the last message
+                  if (targetIdx === undefined) {
+                    targetIdx = updated.length - 1;
+                  }
+                  
+                   if (targetIdx >= 0 && targetIdx < updated.length) {
+                       // IMMUTABLE UPDATE
+                       const msg = { ...updated[targetIdx] };
+                       msg.text = aiResponse;
+                       
+                       if (msg.regeneratedResponses && msg.currentResponseIndex !== undefined) {
+                           const newRegen = [...msg.regeneratedResponses];
+                           newRegen[msg.currentResponseIndex] = aiResponse;
+                           msg.regeneratedResponses = newRegen;
+                       } else {
+                           // Should have been initialized above, but fallback
+                           msg.regeneratedResponses = [aiResponse];
+                           msg.currentResponseIndex = 0;
+                       }
+                       updated[targetIdx] = msg;
+                   }
 
                   // Update characters state
                   if (selectedCharacterId && selectedChatId) {
@@ -1823,22 +1853,15 @@ export default function AIChatRoom() {
             }
           }
         }
-        if (!regen) {
-          setRegenText([aiResponse]);
-          setCurrentRegenText(0);
-        } else {
-          setRegenText([...regenText, aiResponse]);
-          setCurrentRegenText(CurrentRegenText + 1);
-        }
-        setRegenTextChatId(getCurrentChat()?.id || "");
       }
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => {
-        const updated = [
-          ...prev.slice(0, -1),
-          { sender: "ai" as const, text: "(Error fetching response)" },
-        ];
+        const updated = [...prev];
+         const idx = targetMessageIndex !== undefined ? targetMessageIndex : updated.length - 1;
+         if (updated[idx]) {
+             updated[idx].text = "(Error fetching response)";
+         }
         return updated;
       });
     } finally {
@@ -1853,13 +1876,22 @@ export default function AIChatRoom() {
 
     setIsLoading(true);
     isLoadingRef.current = true;
-    setRegenerateFromIndex(null);
-    setShowRegenerate(false);
+    setIsLoading(true);
+    isLoadingRef.current = true;
+    // setShowRegenerate(false); // Deleted
+    // setRegenerateFromIndex(null); // Deleted
 
     const character = getCurrentCharacter();
     if (!character) return;
 
     const messagesToRegenerate = messages.slice(0, fromIndex + 1);
+    
+    // Check if we are regenerating an existing message or creating a new one
+    // The "response" message is usually at fromIndex + 1
+    let targetMessageIndex: number | undefined = undefined;
+    if (fromIndex + 1 < messages.length && messages[fromIndex + 1].sender === "ai") {
+        targetMessageIndex = fromIndex + 1;
+    }
 
     try {
       await handleAPIRequest({
@@ -1869,6 +1901,7 @@ export default function AIChatRoom() {
         userPronouns,
         userDescription,
         regen: true,
+        targetMessageIndex: targetMessageIndex
       });
     } catch (error) {
       console.error("Error:", error);
@@ -3571,30 +3604,31 @@ export default function AIChatRoom() {
                               🗑️ Delete
                             </button>
                           </div>
-                          {i === messages.length - 1 &&
-                            i != 0 &&
-                            msg.sender === "ai" &&
-                            regenTextChatId === getCurrentChat()?.id && (
+                          {msg.sender === "ai" &&
+                            msg.regeneratedResponses &&
+                            msg.regeneratedResponses.length > 1 && (
                               <div className="flex items-center space-x-1 text-xs text-gray-500">
                                 <button
                                   className="hover:text-gray-700 disabled:opacity-50"
-                                  disabled={CurrentRegenText === 0}
+                                  disabled={(msg.currentResponseIndex || 0) === 0}
                                   onClick={() =>
-                                    SwitchDeResponse(CurrentRegenText - 1, i)
+                                    switchResponse(i, (msg.currentResponseIndex || 0) - 1)
                                   }
                                 >
                                   ◀
                                 </button>
                                 <span>
-                                  {CurrentRegenText + 1}/{regenText.length}
+                                  {(msg.currentResponseIndex || 0) + 1}/
+                                  {msg.regeneratedResponses.length}
                                 </span>
                                 <button
                                   className="hover:text-gray-700 disabled:opacity-50"
                                   disabled={
-                                    CurrentRegenText === regenText.length
+                                    (msg.currentResponseIndex || 0) ===
+                                    msg.regeneratedResponses.length - 1
                                   }
                                   onClick={() =>
-                                    SwitchInResponse(CurrentRegenText + 1, i)
+                                    switchResponse(i, (msg.currentResponseIndex || 0) + 1)
                                   }
                                 >
                                   ▶
@@ -3640,8 +3674,7 @@ export default function AIChatRoom() {
                     !e.shiftKey &&
                     !isLoadingRef.current &&
                     apiKey !== "" &&
-                    validated &&
-                    !showRegenerate
+                    validated
                   ) {
                     e.preventDefault();
                     sendMessage();
@@ -3659,7 +3692,6 @@ export default function AIChatRoom() {
                   isLoadingRef.current ||
                   apiKey === "" ||
                   !validated ||
-                  showRegenerate ||
                   !input.trim()
                 }
               >
