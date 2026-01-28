@@ -900,6 +900,7 @@ export default function AIChatRoom() {
 
         if (characterData) {
           // Extract data with fallbacks (different formats)
+          console.log("Character data:", characterData);
           const name =
             characterData.name ||
             characterData.data?.name ||
@@ -917,10 +918,17 @@ export default function AIChatRoom() {
             characterData.description || characterData.data?.description || "";
           const personality =
             characterData.personality || characterData.data?.personality || "";
-          const combinedPersonality = [description, personality]
+            let combinedPersonality=""
+            if (! (personality.startsWith("<p>")||personality.startsWith("<p style="))){
+              combinedPersonality = [description, personality]
             .filter((text) => text.trim())
             .join("\n\n")
             .trim();
+            }
+            else{
+              combinedPersonality = description;
+            }
+          
 
           // Fill the form fields with imported data
           setNewCharacterName(name);
@@ -2299,7 +2307,7 @@ export default function AIChatRoom() {
                         >
                           {chat.title}
                         </button>
-                        <div className="flex md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <div className="flex md:opacity-50 md:group-hover:opacity-100 transition-opacity">
                           <button
                             className="text-blue-500 hover:text-blue-700 p-2"
                             onClick={(e) => {
