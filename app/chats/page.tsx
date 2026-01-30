@@ -399,6 +399,55 @@ export default function AIChatRoom() {
     setMessages(newChat.messages);
   };
 
+  const branchChat = (messageIndex: number) => {
+    const character = getCurrentCharacter();
+    const currentChat = getCurrentChat();
+    if (!character || !currentChat) return;
+
+    // Get messages up to the click point
+    const branchedMessages = messages.slice(0, messageIndex + 1);
+
+    // Determine new title
+    const baseTitle = `branch: ${currentChat.title}`;
+    let newTitle = `${baseTitle} (1)`;
+    let counter = 1;
+
+    // Check for existing duplicates
+    const regex = new RegExp(`^${baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\((\\d+)\\)$`);
+    
+    // Find the highest number used so far
+    character.chats.forEach(c => {
+        const match = c.title.match(regex);
+        if (match) {
+            const num = parseInt(match[1]);
+            if (num >= counter) {
+                counter = num + 1;
+            }
+        }
+    });
+
+    // If "branch: Original Name (1)" doesn't exist yet, we can simple check if the base title itself exists? 
+    // The requirement says "branch: [that room name] (number duplicate)"
+    // Let's stick to the counter logic.
+    newTitle = `${baseTitle} (${counter})`;
+
+    const newChat: Chat = {
+      id: Date.now().toString(),
+      title: newTitle,
+      messages: JSON.parse(JSON.stringify(branchedMessages)), // Deep copy 
+      lastActive: Date.now(),
+    };
+
+    const updatedCharacters = characters.map((c) =>
+      c.id === character.id ? { ...c, chats: [...c.chats, newChat] } : c
+    );
+
+    setCharacters(updatedCharacters);
+    setSelectedChatId(newChat.id);
+    setMessages(newChat.messages);
+    setToastMessage("Chat branched successfully!");
+  };
+
   const handleBotSettingsClick = (characterId: string) => {
     setSelectedCharacterId(characterId);
     // If this character has chats, select the first one
@@ -3634,6 +3683,15 @@ export default function AIChatRoom() {
                                 }
                               >
                                 🔄 Regenerate
+                              </button>
+                            )}
+                             {msg.sender === "ai" && (
+                              <button
+                                className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+                                onClick={() => branchChat(i)}
+                                title="Start a new chat from here"
+                              >
+                                🌿 Branch
                               </button>
                             )}
                             <button
