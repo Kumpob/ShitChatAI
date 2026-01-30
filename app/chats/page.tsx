@@ -192,10 +192,33 @@ export default function AIChatRoom() {
 
       // Select first character and chat if available
       if (parsedCharacters.length > 0) {
-        setSelectedCharacterId(parsedCharacters[0].id);
-        if (parsedCharacters[0].chats.length > 0) {
-          setSelectedChatId(parsedCharacters[0].chats[0].id);
-          setMessages(parsedCharacters[0].chats[0].messages);
+        let foundSaved = false;
+        const lastActiveChat = localStorage.getItem("lastActiveChat");
+        
+        if (lastActiveChat) {
+          try {
+            const { characterId, chatId } = JSON.parse(lastActiveChat);
+            const savedChar = parsedCharacters.find((c: Character) => c.id === characterId);
+            if (savedChar) {
+              const savedChat = savedChar.chats.find((c: Chat) => c.id === chatId);
+              if (savedChat) {
+                setSelectedCharacterId(characterId);
+                setSelectedChatId(chatId);
+                setMessages(savedChat.messages);
+                foundSaved = true;
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing lastActiveChat", e);
+          }
+        }
+
+        if (!foundSaved) {
+          setSelectedCharacterId(parsedCharacters[0].id);
+          if (parsedCharacters[0].chats.length > 0) {
+            setSelectedChatId(parsedCharacters[0].chats[0].id);
+            setMessages(parsedCharacters[0].chats[0].messages);
+          }
         }
       }
     } else {
@@ -258,6 +281,17 @@ export default function AIChatRoom() {
       localStorage.setItem("chatUserThumbnail", userThumbnail);
       localStorage.setItem("chatUserFullImage", userFullImage);
       localStorage.setItem("chatUserPresets", JSON.stringify(userPresets));
+      
+      if (selectedCharacterId && selectedChatId) {
+        localStorage.setItem(
+          "lastActiveChat",
+          JSON.stringify({
+            characterId: selectedCharacterId,
+            chatId: selectedChatId,
+          })
+        );
+      }
+
       setStorageUsed(getLocalStorageUsage());
 
     } catch (e) {
@@ -553,7 +587,7 @@ export default function AIChatRoom() {
     maxDimension: number
   ): Promise<string> => {
     // Check if browser supports WebP
-    const supportsWebP = await checkWebPSupport();
+    const supportsWebP = checkWebPSupport();
     const format = supportsWebP ? "image/webp" : "image/jpeg";
     setUsejpg(!supportsWebP);
 
@@ -583,17 +617,15 @@ export default function AIChatRoom() {
   /**
    * Check if the browser supports WebP format
    */
-  const checkWebPSupport = async (): Promise<boolean> => {
-    // Create a very small WebP image and see if it loads correctly
-    const webPData =
-      "data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA";
-    const img = new Image();
-
-    return new Promise((resolve) => {
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = webPData;
-    });
+  const checkWebPSupport = (): boolean => {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      return canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+    } catch (e) {
+      return false;
+    }
   };
 
   /**
