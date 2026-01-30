@@ -3618,7 +3618,6 @@ export default function AIChatRoom() {
                         value={editText}
                         onChange={(e) => setEditText(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") saveEdit();
                           if (e.key === "Escape") cancelEdit();
                         }}
                         rows={4}
