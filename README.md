@@ -3,11 +3,7 @@
 A lightweight, client-side AI chat app where you can create characters, customize prompts, upload images, manage chats, and talk to AI models via **OpenRouter**.
 All data (characters, chats, images, presets) is stored **locally in your browser** — nothing is uploaded.
 
----
-## TODO:
-Image processing in Safari doesn't convert PNG to WEBP/JPEG.
 
----
 
 ## 🚀 **Features**
 
@@ -120,8 +116,6 @@ Nothing is uploaded — not your chats, API key, or images.
 iOS Safari has:
 
 * Lower localStorage limits (≈ 2–3 MB)
-* Doesn't convert PNG to WEBP/JPEG.
-  Your device may run out of storage faster.
   
 ---
 
