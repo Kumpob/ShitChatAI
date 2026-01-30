@@ -517,6 +517,8 @@ export default function AIChatRoom() {
 
       setEditingIndex(null);
       setEditText("");
+      setToastMessage("Message edited successfully!");
+      setValidcolor("bg-green-400/50");
     }
   };
 
@@ -1084,6 +1086,8 @@ export default function AIChatRoom() {
   const cancelEdit = () => {
     setEditingIndex(null);
     setEditText("");
+    setToastMessage("Edit cancelled");
+    setValidcolor("bg-red-400/50");
   };
 
   const startEditingChatName = (
@@ -1679,6 +1683,8 @@ export default function AIChatRoom() {
       setEditingChatId(null);
       setEditingCharacterId(null);
       setEditChatName("");
+      setToastMessage("Chat name updated");
+      setValidcolor("bg-green-400/50");
     }
   };
 
@@ -1686,6 +1692,8 @@ export default function AIChatRoom() {
     setEditingChatId(null);
     setEditingCharacterId(null);
     setEditChatName("");
+    setToastMessage("Edit cancelled");
+    setValidcolor("bg-red-400/50");
   };
 
   const deleteMessage = (index: number) => {
@@ -1710,6 +1718,8 @@ export default function AIChatRoom() {
           : character
       );
       setCharacters(updatedCharacters);
+      setToastMessage("Message deleted");
+      setValidcolor("bg-red-400/50");
     }
   };
 
@@ -2240,6 +2250,13 @@ export default function AIChatRoom() {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {toastMessage && (
+        <CustomToast
+          message={toastMessage}
+          color={validcolor ? validcolor : "bg-blue-400/50"}
+          onClose={() => (setToastMessage(""), setValidcolor(""))}
+        />
+      )}
       {/* Sidebar + Backdrop for mobile */}
       {isSidebarOpen && (
         <div
@@ -2317,6 +2334,8 @@ export default function AIChatRoom() {
                     onClick={(e) => {
                       e.stopPropagation();
                       createNewChat(character.id);
+                      setToastMessage("New chat created");
+                      setValidcolor("bg-green-400/50");
                     }}
                     title="New chat"
                   >
@@ -3061,13 +3080,6 @@ export default function AIChatRoom() {
                             {validating ? "Validating..." : "Validate"}
                           </button>
                         </div>
-                        {toastMessage && (
-                          <CustomToast
-                            message={toastMessage}
-                            color={validcolor}
-                            onClose={() => setToastMessage("")}
-                          />
-                        )}
                         <p className="text-xs text-gray-500 mt-2">
                           Your API key is stored locally and never sent to any
                           server except OpenRouter
@@ -3526,8 +3538,8 @@ export default function AIChatRoom() {
             message=" Are you sure you want to delete this character? This will also
                 delete all chats associated with this character. This action
                 cannot be undone."
-            onConfirm={() => deleteCharacter(characterToDelete)}
-            onCancel={() => setShowDeleteCharacterModal(false)}
+            onConfirm={() => (deleteCharacter(characterToDelete), setToastMessage("Character deleted"), setValidcolor("bg-red-400/50"))}
+            onCancel={() => (setShowDeleteCharacterModal(false), setToastMessage("Character not deleted"), setValidcolor("bg-blue-400/50"))}
           />
         )}
 
@@ -3537,10 +3549,8 @@ export default function AIChatRoom() {
             title="⚠️ Delete Chat"
             message=" Are you sure you want to delete this chat? This action
                 cannot be undone."
-            onConfirm={() =>
-              deleteChat(chatToDelete.characterId, chatToDelete.chatId)
-            }
-            onCancel={() => setShowDeleteChatModal(false)}
+            onConfirm={() => (deleteChat(chatToDelete.characterId, chatToDelete.chatId), setToastMessage("Chat deleted"), setValidcolor("bg-red-400/50"))}
+            onCancel={() => (setShowDeleteChatModal(false), setToastMessage("Chat not deleted"), setValidcolor("bg-blue-400/50"))}
           />
         )}
         {/* Chat Container */}

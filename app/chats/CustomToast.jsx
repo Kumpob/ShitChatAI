@@ -27,7 +27,7 @@ const CustomToast = ({ message, color, onClose }) => {
     <div
       className={`
         fixed top-[20px] left-1/2 transform -translate-x-1/2 
-        ${color} text-white px-4 py-2 rounded z-50
+        ${color} text-white px-4 py-2 rounded z-100
         transition-all duration-300 ease-in-out
         ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}
       `}
