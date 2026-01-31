@@ -2249,7 +2249,7 @@ export default function AIChatRoom() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-[100dvh] bg-gray-50">
       {toastMessage && (
         <CustomToast
           message={toastMessage}
