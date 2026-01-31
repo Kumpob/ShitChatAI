@@ -5,6 +5,7 @@ import { marked } from "marked";
 import CustomToast from "./CustomToast";
 import { Chat, Character, Message, UserPreset } from "./interfaces";
 import Help from "./HelpModal";
+import StoryContentModal from "./StoryContentModal";
 import ConfirmModal from "./ConfirmModal";
 import Link from "next/link";
 import ManagePresets from "./managePreset";
@@ -75,6 +76,8 @@ export default function AIChatRoom() {
   const [newCharacterName, setNewCharacterName] = useState<string>("");
   const [newCharacterPersonality, setNewCharacterPersonality] =
     useState<string>("");
+  const [newCharacterStoryContent, setNewCharacterStoryContent] =
+    useState<string>("");
   const [newCharacterAlias, setNewCharacterAlias] = useState<string>("");
   const [newCharacterScenario, setNewCharacterScenario] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -85,6 +88,7 @@ export default function AIChatRoom() {
   const [model, setModel] = useState<string>("deepseek/deepseek-chat-v3.1");
   const [apiKey, setApiKey] = useState<string>("");
   const [showBotSettings, setShowBotSettings] = useState<boolean>(false);
+  const [showStoryModal, setShowStoryModal] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
@@ -844,17 +848,21 @@ export default function AIChatRoom() {
             characterData.description || characterData.data?.description || "";
           const personality =
             characterData.personality || characterData.data?.personality || "";
-            let combinedPersonality=""
-            if (! (personality.startsWith("<p>")||personality.startsWith("<p style="))){
-              combinedPersonality = [description, personality]
+          
+          let combinedPersonality = "";
+          let storyContent = "";
+
+          // Check for HTML content in personality
+          if (personality.trim().startsWith("<") || personality.includes("<p") || personality.includes("<div")) {
+             storyContent = personality;
+             // If personality is just HTML, leave combinedPersonality empty (or just description)
+             combinedPersonality = description;
+          } else {
+             combinedPersonality = [description, personality]
             .filter((text) => text.trim())
             .join("\n\n")
             .trim();
-            }
-            else{
-              combinedPersonality = description;
-            }
-          
+          }
 
           // Fill the form fields with imported data
           setNewCharacterName(name);
@@ -862,6 +870,7 @@ export default function AIChatRoom() {
           setNewCharacterFirstMessage(firstMessage);
           setNewCharacterScenario(scenario);
           setNewCharacterPersonality(combinedPersonality);
+          setNewCharacterStoryContent(storyContent);
 
           // Also extract the image itself for use as character image
           const img = new Image();
@@ -1430,6 +1439,12 @@ export default function AIChatRoom() {
           // Combine description and personality (different sites use different fields)
           const description = characterData.description || "";
           const personality = characterData.personality || "";
+          let storyContent = "";
+          if (personality.trim().startsWith("<p>")) {
+            storyContent = personality;
+          } else {
+            storyContent = "";
+          }
           const combinedPersonality = [description, personality]
             .filter((text) => text.trim())
             .join("\n\n")
@@ -1441,6 +1456,7 @@ export default function AIChatRoom() {
           setNewCharacterFirstMessage(firstMessage);
           setNewCharacterScenario(scenario);
           setNewCharacterPersonality(combinedPersonality);
+          setNewCharacterStoryContent(storyContent);
 
           // Reset file input
           event.target.value = "";
@@ -1473,7 +1489,7 @@ export default function AIChatRoom() {
 
     const firstMessage = newCharacterFirstMessage.trim()
       ? newCharacterFirstMessage
-      : `Hello! I'm ${newCharacterName}, how can I help you today?`;
+      : `Hello {{user}}! I'm ${newCharacterName}, how can I help you today?`;
 
     const newCharacter: Character = {
       id: Date.now().toString(),
@@ -1481,6 +1497,7 @@ export default function AIChatRoom() {
       alias: newCharacterAlias.trim() || undefined,
       personality: newCharacterPersonality,
       scenario: newCharacterScenario,
+      storyContent: newCharacterStoryContent,
       firstMessage: firstMessage,
       thumbnail: tempCharacterImage.thumbnail,
       fullImage: tempCharacterImage.fullImage,
@@ -1501,6 +1518,7 @@ export default function AIChatRoom() {
     setNewCharacterName("");
     setNewCharacterAlias("");
     setNewCharacterPersonality("");
+    setNewCharacterStoryContent("");
     setNewCharacterScenario("");
     setNewCharacterFirstMessage(""); // Reset first message
     setShowNewCharacterModal(false);
@@ -2324,14 +2342,21 @@ export default function AIChatRoom() {
             >
               {isSidebarOpen ? "✕" : "☰"}
             </button>
-            <h1 className="text-xl font-bold text-gray-800">
-              {getCurrentCharacter()?.name || "AI"}{" "}
+            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <span 
+                className="cursor-pointer hover:underline hover:text-blue-600 transition-colors"
+                onClick={() => setShowStoryModal(true)}
+                title="Click to view Story Info"
+              >
+                {getCurrentCharacter()?.name || "AI"}
+              </span>
               {getCurrentCharacter()?.alias && (
-                <span className="hidden md:inline">
+                <span className="hidden md:inline text-gray-600 font-normal">
                   ({getCurrentCharacter()?.alias})
                 </span>
               )}
-              : {getCurrentChat()?.title}
+              <span className="text-gray-400">|</span>
+              <span className="font-normal text-gray-600">{getCurrentChat()?.title}</span>
             </h1>
           </div>
           <div className="flex gap-2">
@@ -2353,6 +2378,21 @@ export default function AIChatRoom() {
 
         {/* Help Modal */}
         {showHelp && <Help setShowHelp={setShowHelp} />}
+
+        {/* Story Content Modal */}
+        {showStoryModal && getCurrentCharacter() && (
+          <StoryContentModal
+            isOpen={showStoryModal}
+            onClose={() => setShowStoryModal(false)}
+            character={getCurrentCharacter()!}
+            onSave={(characterId, newContent) => {
+              const updatedCharacters = characters.map((c) =>
+                c.id === characterId ? { ...c, storyContent: newContent } : c
+              );
+              setCharacters(updatedCharacters);
+            }}
+          />
+        )}
 
         {/* New Character Modal */}
         {showNewCharacterModal && (

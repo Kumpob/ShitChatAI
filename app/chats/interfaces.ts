@@ -15,6 +15,7 @@ export interface Character {
   chats: Chat[];
   thumbnail?: string;
   fullImage?: string;
+  storyContent?: string;
 }
 
 export interface Chat {
