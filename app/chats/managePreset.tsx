@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { UserPreset } from "./interfaces"; // replace with your actual path
+import { selectImageFile, processImage } from "./imageUtils";
 
 const ManagePresets = ({
   userPresets,
@@ -41,6 +42,22 @@ const ManagePresets = ({
     setUserPresets(updatedPresets);
     localStorage.setItem("userPresets", JSON.stringify(updatedPresets));
     setEditingPreset(null);
+  };
+
+  const handleImageUpload = async (field: "thumbnail" | "fullImage") => {
+    try {
+      const file = await selectImageFile();
+      if (!file) return;
+
+      const targetKB = field === "thumbnail" ? 5 : 75;
+      const maxDim = field === "thumbnail" ? 200 : 1200;
+
+      const base64 = await processImage(file, targetKB, maxDim);
+      handlePresetFieldChange(field, base64);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert("Error uploading image");
+    }
   };
 
   return (
@@ -121,22 +138,60 @@ const ManagePresets = ({
           />
 
           <label className="block text-xs font-medium">Thumbnail URL</label>
-          <input
-            value={editingPreset.thumbnail}
-            onChange={(e) =>
-              handlePresetFieldChange("thumbnail", e.target.value)
-            }
-            className="w-full border px-2 py-1 rounded text-sm"
-          />
+          <div className="flex gap-2">
+            <input
+              value={editingPreset.thumbnail}
+              onChange={(e) =>
+                handlePresetFieldChange("thumbnail", e.target.value)
+              }
+              className="w-full border px-2 py-1 rounded text-sm"
+              placeholder="https://..."
+            />
+            <button
+              onClick={() => handleImageUpload("thumbnail")}
+              className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded whitespace-nowrap"
+            >
+              Upload
+            </button>
+          </div>
+          {editingPreset.thumbnail && (
+            <div className="mt-1">
+              <img 
+                src={editingPreset.thumbnail} 
+                alt="Thumbnail preview" 
+                className="w-16 h-16 object-cover rounded border"
+                onError={(e) => {(e.target as HTMLImageElement).style.display = 'none'}}
+              />
+            </div>
+          )}
 
           <label className="block text-xs font-medium">Full Image URL</label>
-          <input
-            value={editingPreset.fullImage}
-            onChange={(e) =>
-              handlePresetFieldChange("fullImage", e.target.value)
-            }
-            className="w-full border px-2 py-1 rounded text-sm"
-          />
+          <div className="flex gap-2">
+            <input
+              value={editingPreset.fullImage}
+              onChange={(e) =>
+                handlePresetFieldChange("fullImage", e.target.value)
+              }
+              className="w-full border px-2 py-1 rounded text-sm"
+              placeholder="https://..."
+            />
+            <button
+              onClick={() => handleImageUpload("fullImage")}
+              className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded whitespace-nowrap"
+            >
+              Upload
+            </button>
+          </div>
+          {editingPreset.fullImage && (
+            <div className="mt-1">
+              <img 
+                src={editingPreset.fullImage} 
+                alt="Full image preview" 
+                className="w-full max-h-48 object-contain rounded border bg-gray-100"
+                onError={(e) => {(e.target as HTMLImageElement).style.display = 'none'}}
+              />
+            </div>
+          )}
 
           <div className="flex gap-2">
             <div>
