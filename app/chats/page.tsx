@@ -463,13 +463,22 @@ export default function AIChatRoom() {
 
   const handleBotSettingsClick = (characterId: string) => {
     setSelectedCharacterId(characterId);
-    // If this character has chats, select the first one
     const character = characters.find((c) => c.id === characterId);
     if (character && character.chats.length > 0) {
       setSelectedChatId(character.chats[0].id);
       setMessages(character.chats[0].messages);
     }
-    setShowBotSettings(!showBotSettings);
+    setShowBotSettings(true);
+  };
+
+  const handleStoryInfoClick = (characterId: string) => {
+    setSelectedCharacterId(characterId);
+    const character = characters.find((c) => c.id === characterId);
+    if (character && character.chats.length > 0 && selectedCharacterId !== characterId) {
+      setSelectedChatId(character.chats[0].id);
+      setMessages(character.chats[0].messages);
+    }
+    setShowStoryModal(true);
   };
 
   const startEditing = (index: number, text: string) => {
@@ -2168,11 +2177,12 @@ export default function AIChatRoom() {
                 </div>
 
                 <h3
-                  className="font-semibold text-gray-800 truncate"
+                  className="font-semibold text-gray-800 truncate cursor-pointer hover:underline hover:text-blue-600 transition-colors flex-1"
+                  onClick={() => handleStoryInfoClick(character.id)}
                   title={
                     character.alias
-                      ? `${character.name} (${character.alias})`
-                      : character.name
+                      ? `${character.name} (${character.alias}) - Click for Story Info`
+                      : `${character.name} - Click for Story Info`
                   }
                 >
                   {character.alias && <>{character.alias} (</>}
