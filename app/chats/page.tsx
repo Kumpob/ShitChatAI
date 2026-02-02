@@ -135,6 +135,7 @@ export default function AIChatRoom() {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   const stopResponse = () => {
     if (abortControllerRef.current) {
@@ -1377,6 +1378,15 @@ export default function AIChatRoom() {
     showHelp,
     messages,
   ]);
+
+  // Auto-resize message input
+  useEffect(() => {
+    if (messageInputRef.current) {
+      messageInputRef.current.style.height = "auto";
+      const scrollHeight = messageInputRef.current.scrollHeight;
+      messageInputRef.current.style.height = `${Math.min(scrollHeight, 400)}px`;
+    }
+  }, [input]);
 
   const deleteCharacter = (characterId: string) => {
     if (characters.length <= 1) {
@@ -3690,7 +3700,8 @@ export default function AIChatRoom() {
             <div className="flex space-x-3">
               <textarea
                 id="messageInput"
-                className="flex-1 border-0 text-black bg-gray-100 rounded-lg p-3 resize-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                ref={messageInputRef}
+                className="flex-1 border-0 text-black bg-gray-100 rounded-lg p-3 resize-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all overflow-y-auto"
                 rows={2}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
