@@ -85,7 +85,7 @@ export default function AIChatRoom() {
   const [settingsTab, setSettingsTab] = useState<
     "api" | "user" | "prompt" | "other"
   >("user");
-  const [model, setModel] = useState<string>("deepseek/deepseek-chat-v3.1");
+  const [model, setModel] = useState<string>("deepseek/deepseek-v3.2");
   const [apiKey, setApiKey] = useState<string>("");
   const [showBotSettings, setShowBotSettings] = useState<boolean>(false);
   const [showStoryModal, setShowStoryModal] = useState<boolean>(false);
@@ -134,6 +134,16 @@ export default function AIChatRoom() {
     useState<string>("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const stopResponse = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  };
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -1618,7 +1628,7 @@ export default function AIChatRoom() {
   // You can use this function to validate the API key when needed
 
   const resetApiSettings = () => {
-    setModel("deepseek/deepseek-chat-v3.1");
+    setModel("deepseek/deepseek-v3.2");
     setApiKey("");
     setValidated(false);
   };
@@ -1690,6 +1700,13 @@ export default function AIChatRoom() {
       if (maxTokens !== 0) {
         requestBody.max_tokens = maxTokens;
       }
+      // Cancel any existing request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const response = await fetch(
         "https://openrouter.ai/api/v1/chat/completions",
         {
@@ -1697,8 +1714,11 @@ export default function AIChatRoom() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://shit-chat-ai.vercel.app/",
+            "X-Title": "Shit Chat AI"
           },
           body: JSON.stringify(requestBody),
+          signal: controller.signal,
         }
       );
 
@@ -1824,18 +1844,26 @@ export default function AIChatRoom() {
         }
       }
     } catch (error) {
+      if ((error as any).name === "AbortError") {
+        console.log("Request was aborted");
+        return; // Don't show error message if user stopped it
+      }
       console.error("Error:", error);
       setMessages((prev) => {
         const updated = [...prev];
-         const idx = targetMessageIndex !== undefined ? targetMessageIndex : updated.length - 1;
-         if (updated[idx]) {
-             updated[idx].text = "(Error fetching response)";
-         }
+        const idx =
+          targetMessageIndex !== undefined
+            ? targetMessageIndex
+            : updated.length - 1;
+        if (updated[idx]) {
+          updated[idx].text = "(Error fetching response)";
+        }
         return updated;
       });
     } finally {
       setIsLoading(false);
       isLoadingRef.current = false;
+      abortControllerRef.current = null;
     }
   };
 
@@ -2944,7 +2972,7 @@ export default function AIChatRoom() {
                           className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           value={model}
                           onChange={(e) => setModel(e.target.value)}
-                          placeholder="e.g. deepseek/deepseek-chat-v3.1"
+                          placeholder="e.g. deepseek/deepseek-v3.2"
                         />
                         <p className="text-xs text-gray-500 mt-2">
                           Choose which AI model to use for responses
@@ -3461,7 +3489,7 @@ export default function AIChatRoom() {
                 }`}
               >
                 <div
-                  className={`max-w-xs lg:max-w-md rounded-2xl p-4 shadow-sm transition-all ${
+                  className={`max-w-xs lg:max-w-4xl rounded-2xl p-4 shadow-sm transition-all ${
                     msg.sender === "user"
                       ? "bg-blue-500 text-white rounded-br-none"
                       : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
@@ -3686,17 +3714,20 @@ export default function AIChatRoom() {
                 }}
               />
               <button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-3 rounded-lg shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center min-w-[80px]"
-                onClick={sendMessage}
+                className={`${
+                  isLoadingRef.current
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-blue-500 hover:bg-blue-600"
+                } text-white px-5 py-3 rounded-lg shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center min-w-[80px]`}
+                onClick={isLoadingRef.current ? stopResponse : sendMessage}
                 disabled={
-                  isLoadingRef.current ||
-                  apiKey === "" ||
-                  !validated ||
-                  !input.trim()
+                  (!isLoadingRef.current &&
+                    (apiKey === "" || !validated || !input.trim())) ||
+                  (isLoadingRef.current && !abortControllerRef.current)
                 }
               >
                 {isLoadingRef.current ? (
-                  <span className="animate-pulse">⏳</span>
+                  <span className="flex items-center gap-2">⏹️ Stop</span>
                 ) : (
                   <span className="flex items-center gap-2">📤 Send</span>
                 )}
