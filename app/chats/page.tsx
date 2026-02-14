@@ -33,7 +33,7 @@ export default function AIChatRoom() {
 
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
-    null
+    null,
   );
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -67,7 +67,6 @@ export default function AIChatRoom() {
   const [editText, setEditText] = useState<string>("");
   const [editWidth, setEditWidth] = useState<string>("100%");
 
-
   const [showHelp, setShowHelp] = useState<boolean>(false);
 
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -98,7 +97,7 @@ export default function AIChatRoom() {
   const [validated, setValidated] = useState(false);
   const [importData, setImportData] = useState<string>("");
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(
-    null
+    null,
   );
 
   const [temperature, setTemperature] = useState<number>(0.75);
@@ -116,7 +115,7 @@ export default function AIChatRoom() {
   const [showDeleteCharacterModal, setShowDeleteCharacterModal] =
     useState<boolean>(false);
   const [characterToDelete, setCharacterToDelete] = useState<string | null>(
-    null
+    null,
   );
   const [tempCharacterImage, setTempCharacterImage] = useState<{
     thumbnail?: string;
@@ -161,22 +160,30 @@ export default function AIChatRoom() {
     const handleFocus = () => {
       if (inputContainerRef.current) {
         setTimeout(() => {
-          inputContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+          inputContainerRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "end",
+          });
         }, 100);
       }
     };
 
     const handleVirtualKeyboardShow = () => {
       if (inputContainerRef.current) {
-        inputContainerRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        inputContainerRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
       }
     };
 
-    const textarea = document.getElementById("messageInput") as HTMLTextAreaElement;
+    const textarea = document.getElementById(
+      "messageInput",
+    ) as HTMLTextAreaElement;
     if (textarea) {
       textarea.addEventListener("focus", handleFocus);
       window.addEventListener("resize", handleVirtualKeyboardShow);
-      
+
       return () => {
         textarea.removeEventListener("focus", handleFocus);
         window.removeEventListener("resize", handleVirtualKeyboardShow);
@@ -218,13 +225,17 @@ export default function AIChatRoom() {
       if (parsedCharacters.length > 0) {
         let foundSaved = false;
         const lastActiveChat = localStorage.getItem("lastActiveChat");
-        
+
         if (lastActiveChat) {
           try {
             const { characterId, chatId } = JSON.parse(lastActiveChat);
-            const savedChar = parsedCharacters.find((c: Character) => c.id === characterId);
+            const savedChar = parsedCharacters.find(
+              (c: Character) => c.id === characterId,
+            );
             if (savedChar) {
-              const savedChat = savedChar.chats.find((c: Chat) => c.id === chatId);
+              const savedChat = savedChar.chats.find(
+                (c: Chat) => c.id === chatId,
+              );
               if (savedChat) {
                 setSelectedCharacterId(characterId);
                 setSelectedChatId(chatId);
@@ -305,24 +316,23 @@ export default function AIChatRoom() {
       localStorage.setItem("chatUserThumbnail", userThumbnail);
       localStorage.setItem("chatUserFullImage", userFullImage);
       localStorage.setItem("chatUserPresets", JSON.stringify(userPresets));
-      
+
       if (selectedCharacterId && selectedChatId) {
         localStorage.setItem(
           "lastActiveChat",
           JSON.stringify({
             characterId: selectedCharacterId,
             chatId: selectedChatId,
-          })
+          }),
         );
       }
 
       setStorageUsed(getLocalStorageUsage());
-
     } catch (e) {
       if (isQuotaExceeded(e)) {
         console.error("LocalStorage quota exceeded", e);
         alert(
-          "Storage is full on this device. This action will not be saved. Please try removing the image."
+          "Storage is full on this device. This action will not be saved. Please try removing the image.",
         );
 
         // Optionally: stop trying to save images after this
@@ -350,9 +360,9 @@ export default function AIChatRoom() {
 
   useEffect(() => {
     // This runs only on the client
-      if (typeof window !== "undefined") {
-    setStorageUsed(getLocalStorageUsage());
-  }
+    if (typeof window !== "undefined") {
+      setStorageUsed(getLocalStorageUsage());
+    }
   }, []);
 
   // Update messages when chat changes
@@ -414,7 +424,7 @@ export default function AIChatRoom() {
     };
 
     const updatedCharacters = characters.map((c) =>
-      c.id === characterId ? { ...c, chats: [...c.chats, newChat] } : c
+      c.id === characterId ? { ...c, chats: [...c.chats, newChat] } : c,
     );
 
     setCharacters(updatedCharacters);
@@ -437,20 +447,22 @@ export default function AIChatRoom() {
     let counter = 1;
 
     // Check for existing duplicates
-    const regex = new RegExp(`^${baseTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\((\\d+)\\)$`);
-    
+    const regex = new RegExp(
+      `^${baseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\((\\d+)\\)$`,
+    );
+
     // Find the highest number used so far
-    character.chats.forEach(c => {
-        const match = c.title.match(regex);
-        if (match) {
-            const num = parseInt(match[1]);
-            if (num >= counter) {
-                counter = num + 1;
-            }
+    character.chats.forEach((c) => {
+      const match = c.title.match(regex);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num >= counter) {
+          counter = num + 1;
         }
+      }
     });
 
-    // If "branch: Original Name (1)" doesn't exist yet, we can simple check if the base title itself exists? 
+    // If "branch: Original Name (1)" doesn't exist yet, we can simple check if the base title itself exists?
     // The requirement says "branch: [that room name] (number duplicate)"
     // Let's stick to the counter logic.
     newTitle = `${baseTitle} (${counter})`;
@@ -458,12 +470,12 @@ export default function AIChatRoom() {
     const newChat: Chat = {
       id: Date.now().toString(),
       title: newTitle,
-      messages: JSON.parse(JSON.stringify(branchedMessages)), // Deep copy 
+      messages: JSON.parse(JSON.stringify(branchedMessages)), // Deep copy
       lastActive: Date.now(),
     };
 
     const updatedCharacters = characters.map((c) =>
-      c.id === character.id ? { ...c, chats: [...c.chats, newChat] } : c
+      c.id === character.id ? { ...c, chats: [...c.chats, newChat] } : c,
     );
 
     setCharacters(updatedCharacters);
@@ -485,7 +497,11 @@ export default function AIChatRoom() {
   const handleStoryInfoClick = (characterId: string) => {
     setSelectedCharacterId(characterId);
     const character = characters.find((c) => c.id === characterId);
-    if (character && character.chats.length > 0 && selectedCharacterId !== characterId) {
+    if (
+      character &&
+      character.chats.length > 0 &&
+      selectedCharacterId !== characterId
+    ) {
       setSelectedChatId(character.chats[0].id);
       setMessages(character.chats[0].messages);
     }
@@ -510,7 +526,6 @@ export default function AIChatRoom() {
     if (editingIndex !== null) {
       const updatedMessages = [...messages];
       updatedMessages[editingIndex].text = editText;
-
 
       // Update regenText in the message itself
       const currentMsg = updatedMessages[editingIndex];
@@ -540,10 +555,10 @@ export default function AIChatRoom() {
                         messages: updatedMessages,
                         lastActive: Date.now(),
                       }
-                    : chat
+                    : chat,
                 ),
               }
-            : character
+            : character,
         );
         setCharacters(updatedCharacters);
       }
@@ -560,9 +575,13 @@ export default function AIChatRoom() {
       const file = await selectImageFile();
       if (!file) return;
 
-      const thumbnailBase64 = await processImage(file, 5, 200, (isWebP) => setUsejpg(!isWebP));
+      const thumbnailBase64 = await processImage(file, 5, 200, (isWebP) =>
+        setUsejpg(!isWebP),
+      );
       updateUserImage("thumbnail", thumbnailBase64);
-      const fullImageBase64 = await processImage(file, 75, 1200, (isWebP) => setUsejpg(!isWebP));
+      const fullImageBase64 = await processImage(file, 75, 1200, (isWebP) =>
+        setUsejpg(!isWebP),
+      );
       updateUserImage("fullImage", fullImageBase64);
 
       setToastMessage("Image uploaded successfully!");
@@ -574,7 +593,7 @@ export default function AIChatRoom() {
 
   const updateUserImage = (
     imageType: "thumbnail" | "fullImage",
-    base64Data: string
+    base64Data: string,
   ): void => {
     if (imageType === "thumbnail") {
       setUserThumbnail(base64Data);
@@ -593,9 +612,13 @@ export default function AIChatRoom() {
       const file = await selectImageFile();
       if (!file) return;
 
-      const thumbnailBase64 = await processImage(file, 5, 200, (isWebP) => setUsejpg(!isWebP));
+      const thumbnailBase64 = await processImage(file, 5, 200, (isWebP) =>
+        setUsejpg(!isWebP),
+      );
       updateCharacterImage(characterId, "thumbnail", thumbnailBase64);
-      const fullImageBase64 = await processImage(file, 75, 1200, (isWebP) => setUsejpg(!isWebP));
+      const fullImageBase64 = await processImage(file, 75, 1200, (isWebP) =>
+        setUsejpg(!isWebP),
+      );
       updateCharacterImage(characterId, "fullImage", fullImageBase64);
 
       setToastMessage("Image uploaded successfully!");
@@ -615,8 +638,12 @@ export default function AIChatRoom() {
       const file = await selectImageFile();
       if (!file) return;
 
-      const imageBase64Thumb = await processImage(file, 5, 200, (isWebP) => setUsejpg(!isWebP));
-      const imageBase64Full = await processImage(file, 75, 1200, (isWebP) => setUsejpg(!isWebP));
+      const imageBase64Thumb = await processImage(file, 5, 200, (isWebP) =>
+        setUsejpg(!isWebP),
+      );
+      const imageBase64Full = await processImage(file, 75, 1200, (isWebP) =>
+        setUsejpg(!isWebP),
+      );
 
       setTempCharacterImage((prev) => ({
         ...prev,
@@ -639,22 +666,20 @@ export default function AIChatRoom() {
     }));
   };
 
-
-
   /**
    * Update character with new image
    */
   const updateCharacterImage = (
     characterId: string,
     imageType: "thumbnail" | "fullImage",
-    base64Data: string
+    base64Data: string,
   ): void => {
     setCharacters((prevCharacters) =>
       prevCharacters.map((character) =>
         character.id === characterId
           ? { ...character, [imageType]: base64Data }
-          : character
-      )
+          : character,
+      ),
     );
   };
 
@@ -663,7 +688,7 @@ export default function AIChatRoom() {
    */
   const displayCharacterImage = (
     characterId: string,
-    type: "thumbnail" | "fullImage" = "thumbnail"
+    type: "thumbnail" | "fullImage" = "thumbnail",
   ): JSX.Element | null => {
     const character = characters.find((c) => c.id === characterId);
     if (!character || !character[type]) return null;
@@ -679,7 +704,7 @@ export default function AIChatRoom() {
   };
 
   const displayUserImage = (
-    type: "thumbnail" | "fullImage" = "thumbnail"
+    type: "thumbnail" | "fullImage" = "thumbnail",
   ): JSX.Element | null => {
     return (
       <img
@@ -756,7 +781,7 @@ export default function AIChatRoom() {
   };
 
   const importCharacterCardFromPNG = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ): void => {
     const file = event.target.files?.[0];
     if (!file || !file.type.includes("png")) return;
@@ -790,7 +815,7 @@ export default function AIChatRoom() {
           offset += 4;
 
           const chunkType = textDecoder.decode(
-            new Uint8Array(arrayBuffer, offset, 4)
+            new Uint8Array(arrayBuffer, offset, 4),
           );
           offset += 4;
 
@@ -805,7 +830,7 @@ export default function AIChatRoom() {
             }
 
             const keyword = textDecoder.decode(
-              keywordData.slice(0, keywordEnd)
+              keywordData.slice(0, keywordEnd),
             );
 
             if (
@@ -817,7 +842,7 @@ export default function AIChatRoom() {
               const textData = new Uint8Array(
                 arrayBuffer,
                 dataStart,
-                length - keywordEnd - 1
+                length - keywordEnd - 1,
               );
               const textContent = latin1Decoder.decode(textData); // Use Latin1 for text content
 
@@ -868,20 +893,24 @@ export default function AIChatRoom() {
             characterData.description || characterData.data?.description || "";
           const personality =
             characterData.personality || characterData.data?.personality || "";
-          
+
           let combinedPersonality = "";
           let storyContent = "";
 
           // Check for HTML content in personality
-          if (personality.trim().startsWith("<") || personality.includes("<p") || personality.includes("<div")) {
-             storyContent = personality;
-             // If personality is just HTML, leave combinedPersonality empty (or just description)
-             combinedPersonality = description;
+          if (
+            personality.trim().startsWith("<") ||
+            personality.includes("<p") ||
+            personality.includes("<div")
+          ) {
+            storyContent = personality;
+            // If personality is just HTML, leave combinedPersonality empty (or just description)
+            combinedPersonality = description;
           } else {
-             combinedPersonality = [description, personality]
-            .filter((text) => text.trim())
-            .join("\n\n")
-            .trim();
+            combinedPersonality = [description, personality]
+              .filter((text) => text.trim())
+              .join("\n\n")
+              .trim();
           }
 
           // Fill the form fields with imported data
@@ -965,7 +994,7 @@ export default function AIChatRoom() {
   const startEditingChatName = (
     characterId: string,
     chatId: string,
-    currentName: string
+    currentName: string,
   ) => {
     setEditingChatId(chatId);
     setEditChatName(currentName);
@@ -985,21 +1014,21 @@ export default function AIChatRoom() {
       msg.text = msg.regeneratedResponses[responseIndex];
       msg.currentResponseIndex = responseIndex;
       setMessages(updatedMessages);
-       // Update characters state as well to persist selection
-       if (selectedCharacterId && selectedChatId) {
-        setCharacters((prevChars) => 
-          prevChars.map((c) => 
-            c.id === selectedCharacterId 
-            ? {
-                ...c,
-                chats: c.chats.map((chat) => 
-                  chat.id === selectedChatId 
-                  ? { ...chat, messages: updatedMessages }
-                  : chat
-                )
-              }
-            : c
-          )
+      // Update characters state as well to persist selection
+      if (selectedCharacterId && selectedChatId) {
+        setCharacters((prevChars) =>
+          prevChars.map((c) =>
+            c.id === selectedCharacterId
+              ? {
+                  ...c,
+                  chats: c.chats.map((chat) =>
+                    chat.id === selectedChatId
+                      ? { ...chat, messages: updatedMessages }
+                      : chat,
+                  ),
+                }
+              : c,
+          ),
         );
       }
     }
@@ -1159,7 +1188,7 @@ export default function AIChatRoom() {
         startEditingChatName(
           getCurrentCharacter()?.id || "",
           getCurrentChat()?.id || "",
-          getCurrentChat()?.title || ""
+          getCurrentChat()?.title || "",
         );
       }
     };
@@ -1207,11 +1236,15 @@ export default function AIChatRoom() {
         const latestMessageIndex = messages.length - 1;
         const latestMessage = messages[latestMessageIndex];
         if (
-            latestMessage.regeneratedResponses &&
-            latestMessage.currentResponseIndex !== undefined &&
-            latestMessage.currentResponseIndex < latestMessage.regeneratedResponses.length - 1
+          latestMessage.regeneratedResponses &&
+          latestMessage.currentResponseIndex !== undefined &&
+          latestMessage.currentResponseIndex <
+            latestMessage.regeneratedResponses.length - 1
         ) {
-            switchResponse(latestMessageIndex, latestMessage.currentResponseIndex + 1);
+          switchResponse(
+            latestMessageIndex,
+            latestMessage.currentResponseIndex + 1,
+          );
         }
       }
     };
@@ -1232,10 +1265,13 @@ export default function AIChatRoom() {
         const latestMessageIndex = messages.length - 1;
         const latestMessage = messages[latestMessageIndex];
         if (
-            latestMessage.currentResponseIndex !== undefined &&
-            latestMessage.currentResponseIndex > 0
+          latestMessage.currentResponseIndex !== undefined &&
+          latestMessage.currentResponseIndex > 0
         ) {
-            switchResponse(latestMessageIndex, latestMessage.currentResponseIndex - 1);
+          switchResponse(
+            latestMessageIndex,
+            latestMessage.currentResponseIndex - 1,
+          );
         }
       }
     };
@@ -1254,7 +1290,7 @@ export default function AIChatRoom() {
         if (characters.length <= 1) return; // Need at least 2 characters
 
         const currentCharacterIndex = characters.findIndex(
-          (c) => c.id === selectedCharacterId
+          (c) => c.id === selectedCharacterId,
         );
         let newCharacterIndex;
 
@@ -1288,7 +1324,7 @@ export default function AIChatRoom() {
       if (!currentCharacter || currentCharacter.chats.length <= 1) return;
 
       const currentChatIndex = currentCharacter.chats.findIndex(
-        (chat) => chat.id === selectedChatId
+        (chat) => chat.id === selectedChatId,
       );
 
       if (event.key === "ArrowDown" && event.ctrlKey) {
@@ -1326,7 +1362,7 @@ export default function AIChatRoom() {
 
         DeleteAndRegenerateChat(
           getCurrentCharacter()?.id || "",
-          getCurrentChat()?.id || ""
+          getCurrentChat()?.id || "",
         );
       }
     };
@@ -1391,7 +1427,7 @@ export default function AIChatRoom() {
   const deleteCharacter = (characterId: string) => {
     if (characters.length <= 1) {
       alert(
-        "You cannot delete the last character. At least one character must remain."
+        "You cannot delete the last character. At least one character must remain.",
       );
       setShowDeleteCharacterModal(false);
       setCharacterToDelete(null);
@@ -1399,7 +1435,7 @@ export default function AIChatRoom() {
     }
 
     const updatedCharacters = characters.filter(
-      (character) => character.id !== characterId
+      (character) => character.id !== characterId,
     );
     setCharacters(updatedCharacters);
 
@@ -1491,7 +1527,7 @@ export default function AIChatRoom() {
           event.target.value = "";
         } catch (error) {
           alert(
-            "Invalid JSON file. Please select a valid character card JSON file."
+            "Invalid JSON file. Please select a valid character card JSON file.",
           );
           console.error("Import error:", error);
           event.target.value = "";
@@ -1563,10 +1599,10 @@ export default function AIChatRoom() {
               chats: character.chats.map((chat) =>
                 chat.id === editingChatId
                   ? { ...chat, title: editChatName.trim() }
-                  : chat
+                  : chat,
               ),
             }
-          : character
+          : character,
       );
 
       setCharacters(updatedCharacters);
@@ -1586,9 +1622,18 @@ export default function AIChatRoom() {
     setValidcolor("bg-red-400/50");
   };
 
+  function stripMarkdown(text: string): string {
+    return text
+      .replace(/^>\s?/gm, "") // remove blockquotes
+      .replace(/\*\*/g, "") // remove bold
+      .replace(/_/g, ""); // remove italics
+  }
+
+  function copyToClipboard(text: string): void {
+    navigator.clipboard.writeText(stripMarkdown(text));
+  }
   const deleteMessage = (index: number) => {
     // Logic simplified, we rely on derived state from messages mostly
-
 
     const updatedMessages = messages.slice(0, index);
     setMessages(updatedMessages);
@@ -1602,10 +1647,10 @@ export default function AIChatRoom() {
               chats: character.chats.map((chat) =>
                 chat.id === selectedChatId
                   ? { ...chat, messages: updatedMessages }
-                  : chat
+                  : chat,
               ),
             }
-          : character
+          : character,
       );
       setCharacters(updatedCharacters);
       setToastMessage("Message deleted");
@@ -1705,7 +1750,7 @@ export default function AIChatRoom() {
         temperature: temperature,
         stream: true,
       };
-      
+
       // Only include max_tokens if it's not 0 (use model default)
       if (maxTokens !== 0) {
         requestBody.max_tokens = maxTokens;
@@ -1725,17 +1770,19 @@ export default function AIChatRoom() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
             "HTTP-Referer": "https://shit-chat-ai.vercel.app/",
-            "X-Title": "Shit Chat AI"
+            "X-Title": "Shit Chat AI",
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal,
-        }
+        },
       );
 
-      if (!response.ok){
+      if (!response.ok) {
         const errorText = await response.text();
-         console.error("Full error response:", errorText);
-        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+        console.error("Full error response:", errorText);
+        throw new Error(
+          `HTTP error! status: ${response.status}, details: ${errorText}`,
+        );
       }
 
       const reader = response.body?.getReader();
@@ -1743,41 +1790,49 @@ export default function AIChatRoom() {
 
       const decoder = new TextDecoder();
       let aiResponse = "";
-      
+
       // Prepare the message placeholder
       setMessages((prev) => {
         const updated = [...prev];
-        
-        if (targetMessageIndex !== undefined && targetMessageIndex >= 0 && targetMessageIndex < updated.length) {
+
+        if (
+          targetMessageIndex !== undefined &&
+          targetMessageIndex >= 0 &&
+          targetMessageIndex < updated.length
+        ) {
           // We are appending to an existing message (regenerating)
-           // IMMUTABLE UPDATE: Copy the message and the array
-           const targetMsg = { ...updated[targetMessageIndex] };
-           const currentResponses = targetMsg.regeneratedResponses ? [...targetMsg.regeneratedResponses] : (targetMsg.text ? [targetMsg.text] : []);
-           
-           // Add a placeholder for the new response
-           currentResponses.push("..."); 
-           
-           targetMsg.regeneratedResponses = currentResponses;
-           targetMsg.currentResponseIndex = currentResponses.length - 1;
-           targetMsg.text = "..."; // Show loading...
-           
-           updated[targetMessageIndex] = targetMsg;
-           return updated;
+          // IMMUTABLE UPDATE: Copy the message and the array
+          const targetMsg = { ...updated[targetMessageIndex] };
+          const currentResponses = targetMsg.regeneratedResponses
+            ? [...targetMsg.regeneratedResponses]
+            : targetMsg.text
+              ? [targetMsg.text]
+              : [];
+
+          // Add a placeholder for the new response
+          currentResponses.push("...");
+
+          targetMsg.regeneratedResponses = currentResponses;
+          targetMsg.currentResponseIndex = currentResponses.length - 1;
+          targetMsg.text = "..."; // Show loading...
+
+          updated[targetMessageIndex] = targetMsg;
+          return updated;
         } else if (regen || updated.length === messages.length) {
-            // New message (either regen new or normal send)
-            // Note: messages passed to this func does NOT include the new user message if normal send?
-            // Actually sendMessage adds user message then calls this.
-            // If normal send, targetMessageIndex is undefined. We append.
-            
-            return [
-              ...updated,
-               { 
-                  sender: "ai" as const, 
-                  text: "...", 
-                  regeneratedResponses: ["..."],
-                  currentResponseIndex: 0 
-              },
-            ];
+          // New message (either regen new or normal send)
+          // Note: messages passed to this func does NOT include the new user message if normal send?
+          // Actually sendMessage adds user message then calls this.
+          // If normal send, targetMessageIndex is undefined. We append.
+
+          return [
+            ...updated,
+            {
+              sender: "ai" as const,
+              text: "...",
+              regeneratedResponses: ["..."],
+              currentResponseIndex: 0,
+            },
+          ];
         }
         return updated;
       });
@@ -1795,33 +1850,36 @@ export default function AIChatRoom() {
             try {
               const data = JSON.parse(line.slice(6));
               const content = data.choices[0]?.delta?.content;
-                if (content) {
+              if (content) {
                 aiResponse += content;
                 setMessages((prev) => {
                   const updated = [...prev];
                   let targetIdx = targetMessageIndex;
-                  
+
                   // If we didn't have a target index, it's the last message
                   if (targetIdx === undefined) {
                     targetIdx = updated.length - 1;
                   }
-                  
-                   if (targetIdx >= 0 && targetIdx < updated.length) {
-                       // IMMUTABLE UPDATE
-                       const msg = { ...updated[targetIdx] };
-                       msg.text = aiResponse;
-                       
-                       if (msg.regeneratedResponses && msg.currentResponseIndex !== undefined) {
-                           const newRegen = [...msg.regeneratedResponses];
-                           newRegen[msg.currentResponseIndex] = aiResponse;
-                           msg.regeneratedResponses = newRegen;
-                       } else {
-                           // Should have been initialized above, but fallback
-                           msg.regeneratedResponses = [aiResponse];
-                           msg.currentResponseIndex = 0;
-                       }
-                       updated[targetIdx] = msg;
-                   }
+
+                  if (targetIdx >= 0 && targetIdx < updated.length) {
+                    // IMMUTABLE UPDATE
+                    const msg = { ...updated[targetIdx] };
+                    msg.text = aiResponse;
+
+                    if (
+                      msg.regeneratedResponses &&
+                      msg.currentResponseIndex !== undefined
+                    ) {
+                      const newRegen = [...msg.regeneratedResponses];
+                      newRegen[msg.currentResponseIndex] = aiResponse;
+                      msg.regeneratedResponses = newRegen;
+                    } else {
+                      // Should have been initialized above, but fallback
+                      msg.regeneratedResponses = [aiResponse];
+                      msg.currentResponseIndex = 0;
+                    }
+                    updated[targetIdx] = msg;
+                  }
 
                   // Update characters state
                   if (selectedCharacterId && selectedChatId) {
@@ -1836,10 +1894,10 @@ export default function AIChatRoom() {
                                     messages: updated,
                                     lastActive: Date.now(),
                                   }
-                                : chat
+                                : chat,
                             ),
                           }
-                        : character
+                        : character,
                     );
                     setCharacters(updatedCharacters);
                   }
@@ -1892,12 +1950,15 @@ export default function AIChatRoom() {
     if (!character) return;
 
     const messagesToRegenerate = messages.slice(0, fromIndex + 1);
-    
+
     // Check if we are regenerating an existing message or creating a new one
     // The "response" message is usually at fromIndex + 1
     let targetMessageIndex: number | undefined = undefined;
-    if (fromIndex + 1 < messages.length && messages[fromIndex + 1].sender === "ai") {
-        targetMessageIndex = fromIndex + 1;
+    if (
+      fromIndex + 1 < messages.length &&
+      messages[fromIndex + 1].sender === "ai"
+    ) {
+      targetMessageIndex = fromIndex + 1;
     }
 
     try {
@@ -1908,7 +1969,7 @@ export default function AIChatRoom() {
         userPronouns,
         userDescription,
         regen: true,
-        targetMessageIndex: targetMessageIndex
+        targetMessageIndex: targetMessageIndex,
       });
     } catch (error) {
       console.error("Error:", error);
@@ -1932,7 +1993,7 @@ export default function AIChatRoom() {
             ...character,
             chats: character.chats.filter((chat) => chat.id !== chatId),
           }
-        : character
+        : character,
     );
 
     setCharacters(updatedCharacters);
@@ -1962,7 +2023,7 @@ export default function AIChatRoom() {
         };
 
         const finalCharacters = updatedCharacters.map((c) =>
-          c.id === characterId ? { ...c, chats: [newChat] } : c
+          c.id === characterId ? { ...c, chats: [newChat] } : c,
         );
 
         setCharacters(finalCharacters);
@@ -2050,10 +2111,10 @@ export default function AIChatRoom() {
             chats: c.chats.map((chat) =>
               chat.id === selectedChatId
                 ? { ...chat, messages: updatedMessages, lastActive: Date.now() }
-                : chat
+                : chat,
             ),
           }
-        : c
+        : c,
     );
     setCharacters(updatedCharacters);
   };
@@ -2084,7 +2145,7 @@ export default function AIChatRoom() {
     try {
       localStorage.setItem(
         "userPresets",
-        JSON.stringify([...userPresets, userPreset])
+        JSON.stringify([...userPresets, userPreset]),
       );
       setUserPresets([...userPresets, userPreset]);
     } catch (error) {
@@ -2118,7 +2179,7 @@ export default function AIChatRoom() {
 
   const handlePresetDelete = (presetId: string) => {
     const updatedPresets = userPresets.filter(
-      (preset) => preset.id !== presetId
+      (preset) => preset.id !== presetId,
     );
     setUserPresets(updatedPresets);
     localStorage.setItem("userPresets", JSON.stringify(updatedPresets));
@@ -2324,7 +2385,7 @@ export default function AIChatRoom() {
                               startEditingChatName(
                                 character.id,
                                 chat.id,
-                                chat.title
+                                chat.title,
                               );
                             }}
                             title="Edit chat name"
@@ -2391,7 +2452,7 @@ export default function AIChatRoom() {
               {isSidebarOpen ? "✕" : "☰"}
             </button>
             <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <span 
+              <span
                 className="cursor-pointer hover:underline hover:text-blue-600 transition-colors"
                 onClick={() => setShowStoryModal(true)}
                 title="Click to view Story Info"
@@ -2404,7 +2465,9 @@ export default function AIChatRoom() {
                 </span>
               )}
               <span className="text-gray-400">|</span>
-              <span className="font-normal text-gray-600">{getCurrentChat()?.title}</span>
+              <span className="font-normal text-gray-600">
+                {getCurrentChat()?.title}
+              </span>
             </h1>
           </div>
           <div className="flex gap-2">
@@ -2435,7 +2498,7 @@ export default function AIChatRoom() {
             character={getCurrentCharacter()!}
             onSave={(characterId, newContent) => {
               const updatedCharacters = characters.map((c) =>
-                c.id === characterId ? { ...c, storyContent: newContent } : c
+                c.id === characterId ? { ...c, storyContent: newContent } : c,
               );
               setCharacters(updatedCharacters);
             }}
@@ -2539,7 +2602,9 @@ export default function AIChatRoom() {
                   <div>
                     {usejpg && (
                       <p className="text-yellow-800 text-xs leading-tight">
-                        ⚠️ This web browser does not support WebP. JPEG is used instead. JPEG is heavier than WebP. Use WebP if possible.
+                        ⚠️ This web browser does not support WebP. JPEG is used
+                        instead. JPEG is heavier than WebP. Use WebP if
+                        possible.
                       </p>
                     )}
                   </div>
@@ -2701,7 +2766,7 @@ export default function AIChatRoom() {
                       <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
                         {displayCharacterImage(
                           selectedCharacterId || "",
-                          "thumbnail"
+                          "thumbnail",
                         ) || (
                           <span className="text-gray-500 text-sm">
                             No thumbnail
@@ -2715,7 +2780,7 @@ export default function AIChatRoom() {
                       <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
                         {displayCharacterImage(
                           selectedCharacterId || "",
-                          "fullImage"
+                          "fullImage",
                         ) || (
                           <span className="text-gray-500 text-sm">
                             No full image
@@ -2752,12 +2817,12 @@ export default function AIChatRoom() {
                       updateCharacterImage(
                         selectedCharacterId || "",
                         "thumbnail",
-                        e.target.value
+                        e.target.value,
                       );
                       updateCharacterImage(
                         selectedCharacterId || "",
                         "fullImage",
-                        e.target.value
+                        e.target.value,
                       );
                     }}
                     type="text"
@@ -2781,7 +2846,7 @@ export default function AIChatRoom() {
                         const updatedCharacters = characters.map((c) =>
                           c.id === selectedCharacterId
                             ? { ...c, name: e.target.value }
-                            : c
+                            : c,
                         );
                         setCharacters(updatedCharacters);
                       }}
@@ -2802,7 +2867,7 @@ export default function AIChatRoom() {
                                 ...c,
                                 alias: e.target.value.trim() || undefined,
                               }
-                            : c
+                            : c,
                         );
                         setCharacters(updatedCharacters);
                       }}
@@ -2823,7 +2888,7 @@ export default function AIChatRoom() {
                         const updatedCharacters = characters.map((c) =>
                           c.id === selectedCharacterId
                             ? { ...c, personality: e.target.value }
-                            : c
+                            : c,
                         );
                         setCharacters(updatedCharacters);
                       }}
@@ -2843,7 +2908,7 @@ export default function AIChatRoom() {
                         const updatedCharacters = characters.map((c) =>
                           c.id === selectedCharacterId
                             ? { ...c, scenario: e.target.value }
-                            : c
+                            : c,
                         );
                         setCharacters(updatedCharacters);
                       }}
@@ -2863,7 +2928,7 @@ export default function AIChatRoom() {
                         const updatedCharacters = characters.map((c) =>
                           c.id === selectedCharacterId
                             ? { ...c, firstMessage: e.target.value }
-                            : c
+                            : c,
                         );
                         setCharacters(updatedCharacters);
                       }}
@@ -3038,8 +3103,8 @@ export default function AIChatRoom() {
                             {validated
                               ? "✓ Validated"
                               : apiKey
-                              ? "❌ Not validated"
-                              : "❌ Not configured"}
+                                ? "❌ Not validated"
+                                : "❌ Not configured"}
                           </p>
                           <p>
                             • Endpoint:
@@ -3236,7 +3301,7 @@ export default function AIChatRoom() {
                           className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
                           onClick={async () =>
                             setMaxStorageSize(
-                              await estimateLocalStorageMaxSize()
+                              await estimateLocalStorageMaxSize(),
                             )
                           }
                         >
@@ -3469,8 +3534,16 @@ export default function AIChatRoom() {
             message=" Are you sure you want to delete this character? This will also
                 delete all chats associated with this character. This action
                 cannot be undone."
-            onConfirm={() => (deleteCharacter(characterToDelete), setToastMessage("Character deleted"), setValidcolor("bg-red-400/50"))}
-            onCancel={() => (setShowDeleteCharacterModal(false), setToastMessage("Character not deleted"), setValidcolor("bg-blue-400/50"))}
+            onConfirm={() => (
+              deleteCharacter(characterToDelete),
+              setToastMessage("Character deleted"),
+              setValidcolor("bg-red-400/50")
+            )}
+            onCancel={() => (
+              setShowDeleteCharacterModal(false),
+              setToastMessage("Character not deleted"),
+              setValidcolor("bg-blue-400/50")
+            )}
           />
         )}
 
@@ -3480,8 +3553,16 @@ export default function AIChatRoom() {
             title="⚠️ Delete Chat"
             message=" Are you sure you want to delete this chat? This action
                 cannot be undone."
-            onConfirm={() => (deleteChat(chatToDelete.characterId, chatToDelete.chatId), setToastMessage("Chat deleted"), setValidcolor("bg-red-400/50"))}
-            onCancel={() => (setShowDeleteChatModal(false), setToastMessage("Chat not deleted"), setValidcolor("bg-blue-400/50"))}
+            onConfirm={() => (
+              deleteChat(chatToDelete.characterId, chatToDelete.chatId),
+              setToastMessage("Chat deleted"),
+              setValidcolor("bg-red-400/50")
+            )}
+            onCancel={() => (
+              setShowDeleteChatModal(false),
+              setToastMessage("Chat not deleted"),
+              setValidcolor("bg-blue-400/50")
+            )}
           />
         )}
         {/* Chat Container */}
@@ -3602,7 +3683,7 @@ export default function AIChatRoom() {
                         <div className="flex items-center justify-between mt-3">
                           <div className="flex space-x-2">
                             <button
-                              className={`text-xs ${
+                              className={`text-xs cursor-pointer ${
                                 msg.sender === "user"
                                   ? "text-gray-200 hover:text-gray-300"
                                   : "text-blue-500 hover:text-blue-700"
@@ -3613,21 +3694,21 @@ export default function AIChatRoom() {
                             </button>
                             {msg.sender === "ai" && (
                               <button
-                                className="text-xs text-green-500 hover:text-green-700 transition-colors disabled:opacity-50"
+                                className="text-xs cursor-pointer disabled:cursor-not-allowed text-green-500 hover:text-green-700 transition-colors disabled:opacity-50"
                                 disabled={i == 0 || i != messages.length - 1}
                                 onClick={() =>
                                   DeleteAndRegenerateChat(
                                     getCurrentCharacter()?.id || "",
-                                    getCurrentChat()?.id || ""
+                                    getCurrentChat()?.id || "",
                                   )
                                 }
                               >
                                 🔄 Regenerate
                               </button>
                             )}
-                             {msg.sender === "ai" && (
+                            {msg.sender === "ai" && (
                               <button
-                                className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+                                className="text-xs cursor-pointer text-indigo-500 hover:text-indigo-700 transition-colors"
                                 onClick={() => branchChat(i)}
                                 title="Start a new chat from here"
                               >
@@ -3635,9 +3716,26 @@ export default function AIChatRoom() {
                               </button>
                             )}
                             <button
-                              className="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
-                              onClick={() => deleteMessage(i)}
-                              disabled={i == 0 || i == messages.length - 1}
+                              className={`text-xs cursor-pointer ${
+                                msg.sender === "user"
+                                  ? "text-gray-200 hover:text-gray-300"
+                                  : "text-blue-500 hover:text-blue-700"
+                              }  transition-colors`}
+                              onClick={() => copyToClipboard(msg.text)}
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              className="text-xs cursor-pointer disabled:cursor-not-allowed text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                              onClick={() => {
+                                const confirmed = window.confirm(
+                                  "Are you sure you want to delete this message?",
+                                );
+                                if (confirmed) {
+                                  deleteMessage(i);
+                                }
+                              }}
+                              disabled={i === 0 || i === messages.length - 1}
                             >
                               🗑️ Delete
                             </button>
@@ -3648,9 +3746,14 @@ export default function AIChatRoom() {
                               <div className="flex items-center space-x-1 text-xs text-gray-500">
                                 <button
                                   className="hover:text-gray-700 disabled:opacity-50"
-                                  disabled={(msg.currentResponseIndex || 0) === 0}
+                                  disabled={
+                                    (msg.currentResponseIndex || 0) === 0
+                                  }
                                   onClick={() =>
-                                    switchResponse(i, (msg.currentResponseIndex || 0) - 1)
+                                    switchResponse(
+                                      i,
+                                      (msg.currentResponseIndex || 0) - 1,
+                                    )
                                   }
                                 >
                                   ◀
@@ -3666,7 +3769,10 @@ export default function AIChatRoom() {
                                     msg.regeneratedResponses.length - 1
                                   }
                                   onClick={() =>
-                                    switchResponse(i, (msg.currentResponseIndex || 0) + 1)
+                                    switchResponse(
+                                      i,
+                                      (msg.currentResponseIndex || 0) + 1,
+                                    )
                                   }
                                 >
                                   ▶
@@ -3696,7 +3802,10 @@ export default function AIChatRoom() {
           </div>
 
           {/* Input Area */}
-          <div ref={inputContainerRef} className="bg-white rounded-xl p-3 shadow-lg border border-gray-200">
+          <div
+            ref={inputContainerRef}
+            className="bg-white rounded-xl p-3 shadow-lg border border-gray-200"
+          >
             <div className="flex space-x-3">
               <textarea
                 id="messageInput"
