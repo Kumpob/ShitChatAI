@@ -85,6 +85,9 @@ export default function AIChatRoom() {
     "api" | "user" | "prompt" | "other"
   >("user");
   const [model, setModel] = useState<string>("deepseek/deepseek-v3.2");
+  const [endpointUrl, setEndpointUrl] = useState<string>(
+    "https://openrouter.ai/api/v1/chat/completions",
+  );
   const [apiKey, setApiKey] = useState<string>("");
   const [showBotSettings, setShowBotSettings] = useState<boolean>(false);
   const [showStoryModal, setShowStoryModal] = useState<boolean>(false);
@@ -207,6 +210,7 @@ export default function AIChatRoom() {
     const savedUserDescription = localStorage.getItem("chatUserDescription");
     const savedUserPronouns = localStorage.getItem("chatUserPronouns");
     const savedModel = localStorage.getItem("chatModel");
+    const savedEndpointUrl = localStorage.getItem("chatEndpointUrl");
     const savedApiKey = localStorage.getItem("chatApiKey");
     const savedvalidated = localStorage.getItem("chatValidated");
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
@@ -288,6 +292,7 @@ export default function AIChatRoom() {
     if (savedUserDescription) setUserDescription(savedUserDescription);
     if (savedUserPronouns) setUserPronouns(JSON.parse(savedUserPronouns));
     if (savedModel) setModel(savedModel);
+    if (savedEndpointUrl) setEndpointUrl(savedEndpointUrl);
     if (savedApiKey) setApiKey(savedApiKey);
     if (savedvalidated) setValidated(JSON.parse(savedvalidated));
     if (savedSystemPrompt) setSystemPrompt(savedSystemPrompt);
@@ -307,6 +312,7 @@ export default function AIChatRoom() {
       localStorage.setItem("chatUserDescription", userDescription);
       localStorage.setItem("chatUserPronouns", JSON.stringify(userPronouns));
       localStorage.setItem("chatModel", model);
+      localStorage.setItem("chatEndpointUrl", endpointUrl);
       localStorage.setItem("chatApiKey", apiKey);
       localStorage.setItem("chatValidated", JSON.stringify(validated));
       localStorage.setItem("chatSystemPrompt", systemPrompt);
@@ -347,6 +353,7 @@ export default function AIChatRoom() {
     userDescription,
     userPronouns,
     model,
+    endpointUrl,
     apiKey,
     validated,
     systemPrompt,
@@ -1658,14 +1665,36 @@ export default function AIChatRoom() {
     }
   };
 
-  const validateApiKey = async (key: string): Promise<boolean> => {
+  const validateApiKey = async (
+    apiKey: string,
+    endpointUrl: string,
+    model: string,
+  ): Promise<boolean> => {
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/auth/key", {
+      const response = await fetch(endpointUrl, {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: "Say 'ok' if this API key works.",
+            },
+          ],
+          max_tokens: 5,
+        }),
       });
-      return response.ok;
+
+      if (!response.ok) return false;
+
+      const data = await response.json();
+
+      // Basic sanity check: did we actually get a model response?
+      return !!data?.choices?.[0]?.message?.content;
     } catch (error) {
       return false;
     }
@@ -1673,7 +1702,7 @@ export default function AIChatRoom() {
 
   const validateApibutton = async () => {
     setValidating(true);
-    const isValid = await validateApiKey(apiKey);
+    const isValid = await validateApiKey(apiKey, endpointUrl, model);
     setToastMessage(isValid ? "API Key is valid" : "API Key is invalid");
     setValidcolor(isValid ? "bg-green-400/50" : "bg-red-200/50");
     setValidated(isValid);
@@ -3051,6 +3080,21 @@ export default function AIChatRoom() {
                         />
                         <p className="text-xs text-gray-500 mt-2">
                           Choose which AI model to use for responses
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-semibold text-gray-700 mb-3">
+                          🌐 Endpoint URL
+                        </h3>
+                        <input
+                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          value={endpointUrl}
+                          onChange={(e) => setEndpointUrl(e.target.value)}
+                          placeholder="e.g. https://openrouter.ai/api/v1/chat/completions"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                          The URL of the API endpoint to use for chat
+                          completions
                         </p>
                       </div>
 
