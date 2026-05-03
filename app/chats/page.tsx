@@ -1792,7 +1792,7 @@ export default function AIChatRoom() {
       abortControllerRef.current = controller;
 
       const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
+        endpointUrl,
         {
           method: "POST",
           headers: {
@@ -3111,7 +3111,7 @@ export default function AIChatRoom() {
                               setApiKey(e.target.value);
                               setValidated(false);
                             }}
-                            placeholder="Enter your OpenRouter API key"
+                            placeholder="Enter your API key"
                           />
                           <button
                             className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
@@ -3122,8 +3122,9 @@ export default function AIChatRoom() {
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
                           Your API key is stored locally and never sent to any
-                          server except OpenRouter
+                          server except your API endpoint when validating or sending messages.
                         </p>
+                        <p className="text-xs text-gray-500 mt-2">API keys:</p>
                         <p className="text-xs text-blue-500 mt-1">
                           <a
                             href="https://openrouter.ai/keys"
@@ -3132,6 +3133,26 @@ export default function AIChatRoom() {
                             className="underline"
                           >
                             Get your API key from OpenRouter
+                          </a>
+                        </p>
+                        <p className="text-xs text-blue-500 mt-1">
+                          <a
+                            href="https://platform.openai.com/api-keys"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          >
+                            Get your API key from OpenAI
+                          </a>
+                        </p>
+                        <p className="text-xs text-blue-500 mt-1">
+                          <a
+                            href="https://platform.deepseek.com/api_keys"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          >
+                            Get your API key from Deepseek
                           </a>
                         </p>
                       </div>
@@ -3152,26 +3173,13 @@ export default function AIChatRoom() {
                           </p>
                           <p>
                             • Endpoint:
-                            https://openrouter.ai/api/v1/chat/completions
-                          </p>
-                        </div>
-                        <h3 className="font-semibold text-gray-700 mt-3">
-                          ⚠️ Note
-                        </h3>
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <p>
-                            Currently, only the OpenRouter endpoint is
-                            available. For other APIs like Chutes or Deepseek,
-                            you will need to use the{" "}
-                            <a
-                              href="https://openrouter.ai/settings/integrations"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline text-blue-500"
-                            >
-                              BYOK
-                            </a>{" "}
-                            (Bring Your Own Key) feature within OpenRouter.
+                            {endpointUrl ? (
+                              <p>
+                                {endpointUrl}
+                              </p>
+                            ) : (
+                              "❌ Not configured"
+                            )}
                           </p>
                         </div>
                       </div>
@@ -3899,13 +3907,13 @@ export default function AIChatRoom() {
             </div>
             {apiKey === "" && (
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Please enter your OpenRouter API key and validate it in the
+                Please enter your API key and validate it in the
                 setting to sent messages.
               </p>
             )}
             {!validated && apiKey !== "" && (
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Please validate your OpenRouter API key in the setting to sent
+                Please validate your API key in the setting to send
                 messages.
               </p>
             )}

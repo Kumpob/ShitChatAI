@@ -256,7 +256,24 @@ export default function Help({
                     className="text-blue-600 underline"
                   >
                     OpenRouter
-                  </a>
+                  </a>,
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    OpenAI
+                  </a>,
+                  <a
+                    href="https://platform.deepseek.com/api_keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    Deepseek
+                  </a>, or any compatible AI API provider
+                  
                 </p>
                 <p>
                   <strong>2.</strong> Paste key in API Settings tab

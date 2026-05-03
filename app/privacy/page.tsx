@@ -21,7 +21,7 @@ export default function PrivacyPolicy() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Privacy Policy
           </h1>
-          <p className="text-lg text-gray-600">Last Updated: 30/09/2025</p>
+          <p className="text-lg text-gray-600">Last Updated: 03/05/2026</p>
         </div>
 
         {/* Policy Content */}
@@ -62,7 +62,7 @@ export default function PrivacyPolicy() {
                   </li>
                   <li>Use tracking cookies or analytics services</li>
                   <li>Access your messages or chat content</li>
-                  <li>Share any user data with third parties</li>
+                  <li>Share any user data with third parties, except when you explicitly send data to third-party APIs you configure</li>
                 </ul>
               </div>
             </section>
@@ -103,7 +103,7 @@ export default function PrivacyPolicy() {
                     <li>Your display name and pronouns</li>
                     <li>User description</li>
                     <li>User profile images</li>
-                    <li>API settings (OpenRouter API key)</li>
+                    <li>API settings (e.g., API keys, endpoints, and model configuration provided by you)</li>
                     <li>System prompts and preferences</li>
                   </ul>
                 </div>
@@ -165,29 +165,21 @@ export default function PrivacyPolicy() {
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <h3 className="font-semibold text-yellow-800 mb-3">
-                  5.1 OpenRouter API
+                  5.1 User-Configured AI Services
                 </h3>
                 <ul className="list-disc list-inside text-yellow-700 space-y-2">
                   <li>
-                    Your messages and conversation context are sent directly to
-                    OpenRouter's API
+                    Your messages and conversation context are sent directly to the API endpoint you configure (e.g., OpenRouter or any compatible provider)
                   </li>
-                  <li>We do not intercept, store, or log these API calls</li>
+                  <li>We do not intercept, store, or log these API requests</li>
                   <li>
-                    Your OpenRouter API key is stored locally and never sent to
-                    our servers
+                    API keys and endpoint settings are stored locally on your device and are never sent to our servers
                   </li>
                   <li>
-                    Please review{" "}
-                    <a
-                      href="https://openrouter.ai/privacy"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700 underline"
-                    >
-                      OpenRouter's Privacy Policy
-                    </a>{" "}
-                    for their data handling practices
+                    Data handling depends on the third-party service you choose to use
+                  </li>
+                  <li>
+                    You are responsible for reviewing the privacy policy of your selected provider to understand how they handle your data
                   </li>
                 </ul>
               </div>
@@ -198,13 +190,16 @@ export default function PrivacyPolicy() {
                 </h3>
                 <ul className="list-disc list-inside text-green-700 space-y-2">
                   <li>
-                    All communication with OpenRouter API is encrypted via HTTPS
+                    All communication between your device and configured APIs is performed directly from your browser
                   </li>
                   <li>
-                    We do not maintain servers that process your chat data
+                    Requests are typically encrypted via HTTPS (depending on the endpoint you use)
                   </li>
                   <li>
-                    Your conversations remain between your device and OpenRouter
+                    We do not operate backend servers that process or relay your chat data
+                  </li>
+                  <li>
+                    Your conversations are transmitted only between your device and the third-party service you configure
                   </li>
                 </ul>
               </div>
@@ -225,6 +220,7 @@ export default function PrivacyPolicy() {
                   </li>
                 </ul>
               </div>
+              We do not control, endorse, or assume responsibility for any third-party APIs or services you connect to. Your use of such services is at your own risk. Please review their privacy policies and terms of service before integrating them with ShitchatAI.
             </section>
 
             {/* Your Data Rights */}
@@ -299,7 +295,7 @@ export default function PrivacyPolicy() {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <ul className="list-disc list-inside text-gray-700 space-y-2">
                   <li>
-                    All data encrypted in transit via HTTPS to OpenRouter API
+                    Data is transmitted directly to user-configured endpoints, typically over HTTPS (depending on the provider)
                   </li>
                   <li>
                     Local storage isolation by domain (same-origin policy)
@@ -508,8 +504,7 @@ export default function PrivacyPolicy() {
                     updated
                   </li>
                   <li>
-                    Your OpenRouter API key is stored in localStorage - protect
-                    access to your device
+                    Your API keys and endpoint configurations are stored in localStorage — protect access to your device
                   </li>
                   <li>
                     Use browser privacy modes if you don't want data persistence
