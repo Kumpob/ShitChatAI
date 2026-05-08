@@ -89,6 +89,26 @@ export default function AIChatRoom() {
     "https://openrouter.ai/api/v1/chat/completions",
   );
   const [apiKey, setApiKey] = useState<string>("");
+
+  const [apiPresets, setApiPresets] = useState<
+    {
+      id: string;
+      name: string;
+      model: string;
+      endpointUrl: string;
+      apiKey: string;
+    }[]
+  >([]);
+  const [selectedApiPresetId, setSelectedApiPresetId] = useState<string>("");
+  const [editingApiPresetId, setEditingApiPresetId] = useState<string | null>(
+    null,
+  );
+  const [editApiPresetName, setEditApiPresetName] = useState<string>("");
+  const [editApiPresetModel, setEditApiPresetModel] = useState<string>("");
+  const [editApiPresetEndpoint, setEditApiPresetEndpoint] =
+    useState<string>("");
+  const [editApiPresetKey, setEditApiPresetKey] = useState<string>("");
+
   const [showBotSettings, setShowBotSettings] = useState<boolean>(false);
   const [showStoryModal, setShowStoryModal] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -216,6 +236,8 @@ export default function AIChatRoom() {
     const savedModel = localStorage.getItem("chatModel");
     const savedEndpointUrl = localStorage.getItem("chatEndpointUrl");
     const savedApiKey = localStorage.getItem("chatApiKey");
+    const savedApiPresets = localStorage.getItem("chatApiPresets");
+
     const savedvalidated = localStorage.getItem("chatValidated");
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
     const savedshowthinking = localStorage.getItem("chatShowThinking");
@@ -300,6 +322,8 @@ export default function AIChatRoom() {
     if (savedModel) setModel(savedModel);
     if (savedEndpointUrl) setEndpointUrl(savedEndpointUrl);
     if (savedApiKey) setApiKey(savedApiKey);
+    if (savedApiPresets) setApiPresets(JSON.parse(savedApiPresets));
+
     if (savedvalidated) setValidated(JSON.parse(savedvalidated));
     if (savedSystemPrompt) setSystemPrompt(savedSystemPrompt);
     if (savedshowthinking) setShowThinking(savedshowthinking === "true");
@@ -325,6 +349,8 @@ export default function AIChatRoom() {
       localStorage.setItem("chatModel", model);
       localStorage.setItem("chatEndpointUrl", endpointUrl);
       localStorage.setItem("chatApiKey", apiKey);
+      localStorage.setItem("chatApiPresets", JSON.stringify(apiPresets));
+
       localStorage.setItem("chatValidated", JSON.stringify(validated));
       localStorage.setItem("chatSystemPrompt", systemPrompt);
       localStorage.setItem("chatShowThinking", showThinking.toString());
@@ -2250,6 +2276,69 @@ export default function AIChatRoom() {
     localStorage.setItem("userPresets", JSON.stringify(updatedPresets));
   };
 
+  const saveApiPreset = () => {
+    const name = prompt("Enter a name for this API preset:");
+    if (!name?.trim()) return;
+    const newPreset = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      model,
+      endpointUrl,
+      apiKey,
+    };
+    setApiPresets((prev) => [...prev, newPreset]);
+    setToastMessage("API preset saved!");
+    setValidcolor("bg-green-400/50");
+  };
+
+  const loadApiPreset = (id: string) => {
+    const preset = apiPresets.find((p) => p.id === id);
+    if (!preset) return;
+    setModel(preset.model);
+    setEndpointUrl(preset.endpointUrl);
+    setApiKey(preset.apiKey);
+    setValidated(false);
+    setSelectedApiPresetId(id);
+    setToastMessage("API preset loaded!");
+    setValidcolor("bg-green-400/50");
+  };
+
+  const deleteApiPreset = (id: string) => {
+    setApiPresets((prev) => prev.filter((p) => p.id !== id));
+    if (selectedApiPresetId === id) setSelectedApiPresetId("");
+    setToastMessage("API preset deleted");
+    setValidcolor("bg-red-400/50");
+  };
+
+  const saveEditApiPreset = () => {
+    if (!editingApiPresetId || !editApiPresetName.trim()) return;
+    setApiPresets((prev) =>
+      prev.map((p) =>
+        p.id === editingApiPresetId
+          ? {
+              ...p,
+              name: editApiPresetName.trim(),
+              model: editApiPresetModel,
+              endpointUrl: editApiPresetEndpoint,
+              apiKey: editApiPresetKey,
+            }
+          : p,
+      ),
+    );
+    // Update the active API settings to match
+    setModel(editApiPresetModel);
+    setEndpointUrl(editApiPresetEndpoint);
+    setApiKey(editApiPresetKey);
+    setValidated(false);
+    setEditingApiPresetId(null);
+    setEditApiPresetName("");
+    setEditApiPresetModel("");
+    setEditApiPresetEndpoint("");
+    setEditApiPresetKey("");
+    setToastMessage("API preset updated!");
+    setValidcolor("bg-green-400/50");
+  };
+
   if (consentGiven === false) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
@@ -3104,6 +3193,125 @@ export default function AIChatRoom() {
                   {/* API Settings Tab */}
                   {settingsTab === "api" && (
                     <>
+                      {/* Preset Dropdown */}
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h3 className="font-semibold text-gray-700 mb-3">
+                          📦 API Presets
+                        </h3>
+                        {apiPresets.length === 0 ? (
+                          <p className="text-xs text-gray-400">
+                            No presets saved yet.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            <select
+                              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                              value={selectedApiPresetId}
+                              onChange={(e) => loadApiPreset(e.target.value)}
+                            >
+                              <option value="">— Select a preset —</option>
+                              {apiPresets.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Edit / Delete buttons for selected preset */}
+                            {selectedApiPresetId && (
+                              <div className="flex gap-2">
+                                {editingApiPresetId === selectedApiPresetId ? (
+                                  <div className="space-y-2">
+                                    <input
+                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                      value={editApiPresetName}
+                                      onChange={(e) =>
+                                        setEditApiPresetName(e.target.value)
+                                      }
+                                      placeholder="Preset name"
+                                    />
+                                    <input
+                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                      value={editApiPresetModel}
+                                      onChange={(e) =>
+                                        setEditApiPresetModel(e.target.value)
+                                      }
+                                      placeholder="Model (e.g. deepseek/deepseek-r1)"
+                                    />
+                                    <input
+                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                      value={editApiPresetEndpoint}
+                                      onChange={(e) =>
+                                        setEditApiPresetEndpoint(e.target.value)
+                                      }
+                                      placeholder="Endpoint URL"
+                                    />
+                                    <input
+                                      type="password"
+                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                                      value={editApiPresetKey}
+                                      onChange={(e) =>
+                                        setEditApiPresetKey(e.target.value)
+                                      }
+                                      placeholder="API Key"
+                                    />
+                                    <div className="flex gap-2">
+                                      <button
+                                        className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm"
+                                        onClick={saveEditApiPreset}
+                                      >
+                                        ✅ Save
+                                      </button>
+                                      <button
+                                        className="flex-1 bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
+                                        onClick={() => {
+                                          setEditingApiPresetId(null);
+                                          setEditApiPresetName("");
+                                          setEditApiPresetModel("");
+                                          setEditApiPresetEndpoint("");
+                                          setEditApiPresetKey("");
+                                        }}
+                                      >
+                                        ❌ Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-sm transition-colors"
+                                      onClick={() => {
+                                        const preset = apiPresets.find(
+                                          (p) => p.id === selectedApiPresetId,
+                                        );
+                                        if (preset) {
+                                          setEditingApiPresetId(preset.id);
+                                          setEditApiPresetName(preset.name);
+                                          setEditApiPresetModel(preset.model);
+                                          setEditApiPresetEndpoint(
+                                            preset.endpointUrl,
+                                          );
+                                          setEditApiPresetKey(preset.apiKey);
+                                        }
+                                      }}
+                                    >
+                                      ✏️ Edit Preset
+                                    </button>
+                                    <button
+                                      className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-lg text-sm transition-colors"
+                                      onClick={() =>
+                                        deleteApiPreset(selectedApiPresetId)
+                                      }
+                                    >
+                                      🗑️ Delete Preset
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h3 className="font-semibold text-gray-700 mb-3">
                           🤖 AI Model
@@ -3111,7 +3319,10 @@ export default function AIChatRoom() {
                         <input
                           className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           value={model}
-                          onChange={(e) => setModel(e.target.value)}
+                          onChange={(e) => {
+                            setModel(e.target.value);
+                            setSelectedApiPresetId("");
+                          }}
                           placeholder="e.g. deepseek/deepseek-v3.2"
                         />
                         <p className="text-xs text-gray-500 mt-2">
@@ -3125,7 +3336,10 @@ export default function AIChatRoom() {
                         <input
                           className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           value={endpointUrl}
-                          onChange={(e) => setEndpointUrl(e.target.value)}
+                          onChange={(e) => {
+                            setEndpointUrl(e.target.value);
+                            setSelectedApiPresetId("");
+                          }}
                           placeholder="e.g. https://openrouter.ai/api/v1/chat/completions"
                         />
                         <p className="text-xs text-gray-500 mt-2">
@@ -3146,6 +3360,7 @@ export default function AIChatRoom() {
                             onChange={(e) => {
                               setApiKey(e.target.value);
                               setValidated(false);
+                              setSelectedApiPresetId("");
                             }}
                             placeholder="Enter your API key"
                           />
@@ -3218,6 +3433,12 @@ export default function AIChatRoom() {
                           </div>
                         </div>
                       </div>
+                      <button
+                        className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+                        onClick={saveApiPreset}
+                      >
+                        💾 Save Current as Preset
+                      </button>
                       <button
                         className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
                         onClick={resetApiSettings}
@@ -3295,53 +3516,54 @@ export default function AIChatRoom() {
                       </div>
                       <div className="bg-gray-50 rounded-lg">
                         <div className="p-4 flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-gray-700">
-                            🧠 Show Thinking
-                          </h3>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Only works with reasoning models (e.g. deepseek-v4)
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setShowThinking((prev) => !prev)}
-                          className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
-                            showThinking
-                              ? "bg-green-500 hover:bg-green-600"
-                              : "bg-gray-400 hover:bg-gray-500"
-                          }`}
-                        >
-                          {showThinking ? "ON" : "OFF"}
-                        </button>
+                          <div>
+                            <h3 className="font-semibold text-gray-700">
+                              🧠 Show Thinking
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Only works with reasoning models (e.g.
+                              deepseek-v4)
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setShowThinking((prev) => !prev)}
+                            className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
+                              showThinking
+                                ? "bg-green-500 hover:bg-green-600"
+                                : "bg-gray-400 hover:bg-gray-500"
+                            }`}
+                          >
+                            {showThinking ? "ON" : "OFF"}
+                          </button>
                         </div>
                         {showThinking && (
-                      <div className="p-4">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          🧠 Thinking Effort
-                        </h3>
-                        <select
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                          value={thinkingEffort}
-                          onChange={(e) =>
-                            setThinkingEffort(
-                              e.target.value as typeof thinkingEffort,
-                            )
-                          }
-                          disabled={!showThinking}
-                        >
-                          <option value="xhigh">X-High</option>
-                          <option value="high">High</option>
-                          <option value="medium">Medium</option>
-                          <option value="low">Low</option>
-                        </select>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Only applies when thinking is enabled. Higher effort =
-                          more tokens used.
-                        </p>
+                          <div className="p-4">
+                            <h3 className="font-semibold text-gray-700 mb-3">
+                              🧠 Thinking Effort
+                            </h3>
+                            <select
+                              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                              value={thinkingEffort}
+                              onChange={(e) =>
+                                setThinkingEffort(
+                                  e.target.value as typeof thinkingEffort,
+                                )
+                              }
+                              disabled={!showThinking}
+                            >
+                              <option value="xhigh">X-High</option>
+                              <option value="high">High</option>
+                              <option value="medium">Medium</option>
+                              <option value="low">Low</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Only applies when thinking is enabled. Higher
+                              effort = more tokens used.
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      )}
-                      </div>
-                      
+
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h3 className="font-semibold text-gray-700 mb-3">
                           📝 System Prompt
