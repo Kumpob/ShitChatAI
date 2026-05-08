@@ -115,6 +115,10 @@ export default function AIChatRoom() {
   const defaultprompt = defaultpromptx;
   const defaultpromptRP = defaultpromptRPx;
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [showThinking, setShowThinking] = useState(false);
+  const [thinkingEffort, setThinkingEffort] = useState<
+    "xhigh" | "high" | "medium" | "low"
+  >("low");
   const [showDeleteCharacterModal, setShowDeleteCharacterModal] =
     useState<boolean>(false);
   const [characterToDelete, setCharacterToDelete] = useState<string | null>(
@@ -214,6 +218,8 @@ export default function AIChatRoom() {
     const savedApiKey = localStorage.getItem("chatApiKey");
     const savedvalidated = localStorage.getItem("chatValidated");
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
+    const savedshowthinking = localStorage.getItem("chatShowThinking");
+    const savedThinkingEffort = localStorage.getItem("chatThinkingEffort");
 
     const savedTemperature = localStorage.getItem("chatTemperature");
     const savedMaxTokens = localStorage.getItem("chatMaxTokens");
@@ -296,6 +302,11 @@ export default function AIChatRoom() {
     if (savedApiKey) setApiKey(savedApiKey);
     if (savedvalidated) setValidated(JSON.parse(savedvalidated));
     if (savedSystemPrompt) setSystemPrompt(savedSystemPrompt);
+    if (savedshowthinking) setShowThinking(savedshowthinking === "true");
+    if (savedThinkingEffort)
+      setThinkingEffort(
+        savedThinkingEffort as "xhigh" | "high" | "medium" | "low",
+      );
 
     if (savedTemperature) setTemperature(parseFloat(savedTemperature));
     if (savedMaxTokens) setMaxTokens(parseInt(savedMaxTokens));
@@ -316,6 +327,8 @@ export default function AIChatRoom() {
       localStorage.setItem("chatApiKey", apiKey);
       localStorage.setItem("chatValidated", JSON.stringify(validated));
       localStorage.setItem("chatSystemPrompt", systemPrompt);
+      localStorage.setItem("chatShowThinking", showThinking.toString());
+      localStorage.setItem("chatThinkingEffort", thinkingEffort);
 
       localStorage.setItem("chatTemperature", temperature.toString());
       localStorage.setItem("chatMaxTokens", maxTokens.toString());
@@ -357,7 +370,7 @@ export default function AIChatRoom() {
     apiKey,
     validated,
     systemPrompt,
-
+    showThinking,
     temperature,
     maxTokens,
     userThumbnail,
@@ -1686,15 +1699,24 @@ export default function AIChatRoom() {
             },
           ],
           max_tokens: 5,
+          thinking: { type: "disabled" },
+          reasoning: { enabled: false },
         }),
       });
 
-      if (!response.ok) return false;
+      if (response.status !== 200) {
+        console.log("API key validation failed");
+        return false;
+      }
 
       const data = await response.json();
-
+      console.log("API validation response:", data.choices?.[0]?.message);
       // Basic sanity check: did we actually get a model response?
-      return !!data?.choices?.[0]?.message?.content;
+      return (
+        !!data?.choices?.[0]?.message?.content ||
+        !!data?.choices?.[0]?.message?.reasoning_content ||
+        !!data?.choices?.[0]?.message?.reasoning
+      );
     } catch (error) {
       return false;
     }
@@ -1777,9 +1799,16 @@ export default function AIChatRoom() {
           ...messagesWithNames,
         ],
         temperature: temperature,
+        //deepseek
+        thinking: { type: showThinking ? "enabled" : "disabled" },
+        //openrouter
+        reasoning: { enabled: showThinking ? true : false },
         stream: true,
       };
-
+      if (showThinking) {
+        requestBody.reasoning_effort = thinkingEffort;
+        requestBody.reasoning = { enabled: true, effort: thinkingEffort };
+      }
       // Only include max_tokens if it's not 0 (use model default)
       if (maxTokens !== 0) {
         requestBody.max_tokens = maxTokens;
@@ -1791,20 +1820,17 @@ export default function AIChatRoom() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const response = await fetch(
-        endpointUrl,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": "https://shit-chat-ai.vercel.app/",
-            "X-Title": "Shit Chat AI",
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
+      const response = await fetch(endpointUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://shit-chat-ai.vercel.app/",
+          "X-Title": "Shit Chat AI",
         },
-      );
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1819,6 +1845,7 @@ export default function AIChatRoom() {
 
       const decoder = new TextDecoder();
       let aiResponse = "";
+      let aiThinking = "";
 
       // Prepare the message placeholder
       setMessages((prev) => {
@@ -1878,33 +1905,40 @@ export default function AIChatRoom() {
           if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.slice(6));
-              const content = data.choices[0]?.delta?.content;
-              if (content) {
-                aiResponse += content;
+              const delta = data.choices[0]?.delta;
+              console.log("delta:", delta); // <-- add this temporarily
+
+              const content = delta?.content;
+              // Most likely fix — add reasoning to the chain:
+              const thinking =
+                delta?.reasoning_content ??
+                delta?.reasoning ??
+                delta?.thinking ??
+                null;
+
+              if (thinking) {
+                aiThinking += thinking;
+              }
+              if (content || thinking) {
+                if (content) aiResponse += content;
                 setMessages((prev) => {
                   const updated = [...prev];
-                  let targetIdx = targetMessageIndex;
-
-                  // If we didn't have a target index, it's the last message
-                  if (targetIdx === undefined) {
-                    targetIdx = updated.length - 1;
-                  }
+                  let targetIdx = targetMessageIndex ?? updated.length - 1;
 
                   if (targetIdx >= 0 && targetIdx < updated.length) {
-                    // IMMUTABLE UPDATE
                     const msg = { ...updated[targetIdx] };
-                    msg.text = aiResponse;
+                    if (content) msg.text = aiResponse;
+                    msg.thinking = aiThinking; // <-- add this
 
                     if (
                       msg.regeneratedResponses &&
                       msg.currentResponseIndex !== undefined
                     ) {
                       const newRegen = [...msg.regeneratedResponses];
-                      newRegen[msg.currentResponseIndex] = aiResponse;
+                      newRegen[msg.currentResponseIndex] = msg.text;
                       msg.regeneratedResponses = newRegen;
                     } else {
-                      // Should have been initialized above, but fallback
-                      msg.regeneratedResponses = [aiResponse];
+                      msg.regeneratedResponses = [msg.text];
                       msg.currentResponseIndex = 0;
                     }
                     updated[targetIdx] = msg;
@@ -1940,6 +1974,8 @@ export default function AIChatRoom() {
           }
         }
       }
+      console.log("Full AI response:", aiResponse);
+      console.log("Full AI thinking:", aiThinking);
     } catch (error) {
       if ((error as any).name === "AbortError") {
         console.log("Request was aborted");
@@ -3122,7 +3158,8 @@ export default function AIChatRoom() {
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
                           Your API key is stored locally and never sent to any
-                          server except your API endpoint when validating or sending messages.
+                          server except your API endpoint when validating or
+                          sending messages.
                         </p>
                         <p className="text-xs text-gray-500 mt-2">API keys:</p>
                         <p className="text-xs text-blue-500 mt-1">
@@ -3171,16 +3208,14 @@ export default function AIChatRoom() {
                                 ? "❌ Not validated"
                                 : "❌ Not configured"}
                           </p>
-                          <p>
+                          <div className="text-xs text-blue-500 mt-1 space-y-1">
                             • Endpoint:
                             {endpointUrl ? (
-                              <p>
-                                {endpointUrl}
-                              </p>
+                              <p>{endpointUrl}</p>
                             ) : (
                               "❌ Not configured"
                             )}
-                          </p>
+                          </div>
                         </div>
                       </div>
                       <button
@@ -3258,6 +3293,55 @@ export default function AIChatRoom() {
                           </p>
                         </div>
                       </div>
+                      <div className="bg-gray-50 rounded-lg">
+                        <div className="p-4 flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-gray-700">
+                            🧠 Show Thinking
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Only works with reasoning models (e.g. deepseek-v4)
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowThinking((prev) => !prev)}
+                          className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
+                            showThinking
+                              ? "bg-green-500 hover:bg-green-600"
+                              : "bg-gray-400 hover:bg-gray-500"
+                          }`}
+                        >
+                          {showThinking ? "ON" : "OFF"}
+                        </button>
+                        </div>
+                        {showThinking && (
+                      <div className="p-4">
+                        <h3 className="font-semibold text-gray-700 mb-3">
+                          🧠 Thinking Effort
+                        </h3>
+                        <select
+                          className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                          value={thinkingEffort}
+                          onChange={(e) =>
+                            setThinkingEffort(
+                              e.target.value as typeof thinkingEffort,
+                            )
+                          }
+                          disabled={!showThinking}
+                        >
+                          <option value="xhigh">X-High</option>
+                          <option value="high">High</option>
+                          <option value="medium">Medium</option>
+                          <option value="low">Low</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Only applies when thinking is enabled. Higher effort =
+                          more tokens used.
+                        </p>
+                      </div>
+                      )}
+                      </div>
+                      
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h3 className="font-semibold text-gray-700 mb-3">
                           📝 System Prompt
@@ -3719,6 +3803,22 @@ export default function AIChatRoom() {
                     </div>
                   ) : (
                     <>
+                      {msg.thinking && (
+                        <details
+                          open={isLoading && i === messages.length - 1}
+                          className="mb-2"
+                        >
+                          <summary className="text-xs cursor-pointer opacity-60 hover:opacity-100 select-none">
+                            💭 Thinking...
+                          </summary>
+                          <div
+                            className="mt-2 text-xs opacity-70 border-l-2 border-gray-300 pl-2 whitespace-pre-wrap break-words"
+                            dangerouslySetInnerHTML={{
+                              __html: formatText(msg.thinking),
+                            }}
+                          />
+                        </details>
+                      )}
                       <div
                         className="message-content overflow-x-auto break-words"
                         dangerouslySetInnerHTML={{
@@ -3907,14 +4007,13 @@ export default function AIChatRoom() {
             </div>
             {apiKey === "" && (
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Please enter your API key and validate it in the
-                setting to sent messages.
+                Please enter your API key and validate it in the setting to sent
+                messages.
               </p>
             )}
             {!validated && apiKey !== "" && (
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Please validate your API key in the setting to send
-                messages.
+                Please validate your API key in the setting to send messages.
               </p>
             )}
             <p className="text-xs text-gray-500 mt-2 text-center">
