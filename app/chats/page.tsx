@@ -1949,7 +1949,7 @@ export default function AIChatRoom() {
                 if (content) aiResponse += content;
                 setMessages((prev) => {
                   const updated = [...prev];
-                  let targetIdx = targetMessageIndex ?? updated.length - 1;
+                  const targetIdx = targetMessageIndex ?? updated.length - 1;
 
                   if (targetIdx >= 0 && targetIdx < updated.length) {
                     const msg = { ...updated[targetIdx] };
