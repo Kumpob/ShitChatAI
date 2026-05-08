@@ -1,84 +1,118 @@
 # **ShitChatAI**
 
-A lightweight, client-side AI chat app where you can create characters, customize prompts, upload images, manage chats, and talk to AI models via **OpenRouter**.
-All data (characters, chats, images, presets) is stored **locally in your browser** — nothing is uploaded.
+A lightweight, client-side AI chat app where you can create characters, customize prompts, upload images, manage chats, and talk to AI models via **OpenRouter**, **DeepSeek**, **OpenAI**, or any OpenAI-compatible API endpoint.
+All data (characters, chats, images, presets) is stored **locally in your browser** — nothing is uploaded to any server.
 
-
+---
 
 ## 🚀 **Features**
 
 ### 👤 **Custom AI Characters**
 
-* Create unlimited characters
-* Personality, scenario, and first-message settings
+* Create unlimited characters with name, alias, personality, scenario, and first-message settings
 * Optional avatar images (thumbnail + full image)
-* Import character cards (JSON or PNG with embedded metadata)
+* Import character cards (`.json` or `.png` with embedded metadata)
+* Edit character settings at any time via Bot Settings
 
 ### 💬 **Chat System**
 
 * Each character can have multiple chats
-* Rename, delete, or regenerate chats
-* Message editing
-* Chat history saved locally
+* Rename, delete, branch, or clear chats
+* Message editing (inline, with auto-resize)
+* Delete individual messages
+* Chat history saved locally and restored on reload
 
 ### 🔄 **AI Responses**
 
-* Uses **OpenRouter** API with user-provided API key
-* Supports streaming responses
-* Regenerate responses
+* Streaming responses with live display
+* Regenerate responses — multiple regenerations stored per message, switchable with ◀ ▶
+* Branch chat from any message to explore alternate paths
 * Temperature & max token controls
-* Supports custom system prompts
+* Custom system prompt with placeholder support (`{{char}}`, `{{user}}`, `{{p1}}`, `{{p2}}`, `{{p3}}`)
+* Default assistance and roleplay system prompt presets
 
-### 🧠 **User Identity & Presets**
+### 🧠 **Thinking / Reasoning Support**
 
-* Set username, pronouns, description, and profile image
-* Save & load user presets
-* Local-only storage
+* Toggle thinking on/off per session
+* Adjustable thinking effort: `X-High`, `High`, `Medium`, `Low`
+* Thinking streams live while response is generating, then auto-collapses when complete
+* Thinking stored per regeneration — switches alongside responses when cycling with ◀ ▶
+* Compatible with OpenRouter reasoning and DeepSeek native thinking API
 
-### 🧩 **Image Handling**
+### 🔑 **API Presets**
 
-* Automatic image compression (WebP/JPEG depending on browser support)
-* Full image viewer modal
-* PNG metadata extraction (for character imports)
+* Save multiple API configurations (model, endpoint URL, API key) as named presets
+* Load, edit, and delete presets from a dropdown in API settings
+* Editing a preset updates all fields including the active session
+
+### 🧩 **User Identity & Presets**
+
+* Set your username, pronouns (subject/possessive/object), description, and profile image
+* Save and load multiple user presets
+* Pronoun placeholders (`{{p1}}`, `{{p2}}`, `{{p3}}`) work throughout system prompts and character prompts
+
+### 🖼️ **Image Handling**
+
+* Automatic image compression (WebP with JPEG fallback)
+* Separate thumbnail (5KB / 200px) and full image (75KB / 1200px) versions
+* Full image viewer modal on click
+* PNG character card metadata extraction (tEXt chunks)
+* External image URL support (with IP exposure warning)
 
 ### 💾 **Local Storage Management**
 
-* Auto-save all app data
-* “Clear all data” button
-* **Storage usage meter** (used / maximum capacity)
-* Detects “storage full” and prevents data loss
+* All data auto-saved on every change
+* Storage usage meter (used / maximum capacity)
+* "Clear All Data" wipes everything and resets consent
+* Quota exceeded detection with user-friendly error
 
 ### 🖥️ **Keyboard Shortcuts**
 
-* `c` – new chat
-* `e` – edit last AI message
-* `r` – regenerate last response
-* `` ` `` – toggle sidebar
-* `h` – toggle help
-* And many more…
+| Key | Action |
+|-----|--------|
+| `` ` `` | Toggle sidebar |
+| `h` | Toggle help |
+| `f` | Focus message input |
+| `c` | New chat |
+| `d` | Delete current chat |
+| `r` | Regenerate last response |
+| `e` | Edit last message |
+| `=` | Next regenerated response |
+| `-` | Previous regenerated response |
+| `b` | Open bot settings |
+| `v` | Rename current chat |
+| `n` | New character modal |
+| `u` | Open user settings |
+| `a` | Open API settings |
+| `p` | Open prompt settings |
+| `Ctrl + ←/→` | Switch characters |
+| `Ctrl + ↑/↓` | Switch chats |
+| `Esc` | Close any open modal |
 
 ---
 
 ## 🔑 **Requirements**
 
-* Any modern browser
-* For AI responses: an **OpenRouter API key**
-  (you enter it manually — it’s never sent anywhere else)
+* Any modern browser (Chrome, Firefox, Edge, Safari)
+* An API key from a supported provider:
+  * [OpenRouter](https://openrouter.ai/keys) — access to 100s of models
+  * [OpenAI](https://platform.openai.com/api-keys)
+  * [DeepSeek](https://platform.deepseek.com/api_keys)
+  * Any OpenAI-compatible endpoint
+
+Your API key is stored locally and only sent to your configured endpoint.
 
 ---
 
 ## 🛠️ **Tech Stack**
 
 * **Next.js (App Router)**
-* **React**
-* **TypeScript**
+* **React + TypeScript**
 * **TailwindCSS**
-* **OpenRouter API**
-* Client-side image processing:
-
-  * Canvas resizing & compression
-  * WebP/JPEG fallback logic
-* LocalStorage for all persistence
+* **marked** — Markdown rendering
+* **OpenAI-compatible streaming API**
+* Client-side image processing (Canvas, WebP/JPEG compression)
+* `localStorage` for all persistence
 
 ---
 
@@ -105,79 +139,39 @@ npm run start
 
 ---
 
-## ⚠️ Important Notes
+## ⚠️ **Important Notes**
 
 ### 🔒 **All data is local**
 
-Nothing is uploaded — not your chats, API key, or images.
+Nothing is uploaded — not your chats, API key, characters, or images. Everything lives in your browser's `localStorage`.
 
-### 📱 **Mobile device limitations**
+### 📱 **Mobile limitations**
 
-iOS Safari has:
+iOS Safari has lower localStorage limits (≈ 2–3 MB). Avoid large images if you're on mobile.
 
-* Lower localStorage limits (≈ 2–3 MB)
-  
+### 🧠 **Thinking models**
+
+Thinking/reasoning output only appears with models that support it (e.g. `deepseek/deepseek-r1`, `openai/o3`, etc.). Standard models like `deepseek-v3` will produce no thinking output even with thinking enabled.
+
 ---
 
-## 📥 Importing Character Cards
+## 📥 **Importing Character Cards**
 
 Supports:
 
-* `.json` character cards
-* `.png` cards with embedded metadata (tEXt chunks)
+* `.json` character cards (SillyTavern / TavernAI format)
+* `.png` cards with embedded `tEXt` metadata (base64-encoded JSON in `chara` chunk)
 
-Imported images are compressed and stored locally.
+Imported images are automatically compressed and stored locally.
 
 ---
 
-## 🗑️ Clearing Data
+## 🗑️ **Clearing Data**
 
-Settings → “Clear All Data” resets:
+Settings → Other → "Clear All Data & Reset Consent" wipes:
 
-* Characters
-* Chats
-* User info
+* All characters and chats
+* User info and presets
+* API keys and presets
 * Images
-* Presets
-* API keys
-* Consent flag
-
----
-
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* Consent flag (returns to landing page)
