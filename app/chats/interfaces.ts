@@ -3,6 +3,7 @@ export interface Message {
   text: string;
   thinking?: string;
   regeneratedResponses?: string[];
+  regeneratedThinking?: string[];
   currentResponseIndex?: number;
 }
 

@@ -1059,6 +1059,7 @@ export default function AIChatRoom() {
     ) {
       msg.text = msg.regeneratedResponses[responseIndex];
       msg.currentResponseIndex = responseIndex;
+      msg.thinking = msg.regeneratedThinking?.[responseIndex] ?? "";
       setMessages(updatedMessages);
       // Update characters state as well to persist selection
       if (selectedCharacterId && selectedChatId) {
@@ -1782,6 +1783,8 @@ export default function AIChatRoom() {
     regen: boolean;
     targetMessageIndex?: number;
   }) => {
+    let aiResponse = "";
+    let aiThinking = "";
     try {
       let systemMessage = systemPrompt;
       systemMessage += `\n\nCharacter Name: ${character.name}`;
@@ -1870,8 +1873,6 @@ export default function AIChatRoom() {
       if (!reader) throw new Error("No reader available");
 
       const decoder = new TextDecoder();
-      let aiResponse = "";
-      let aiThinking = "";
 
       // Prepare the message placeholder
       setMessages((prev) => {
@@ -1890,13 +1891,19 @@ export default function AIChatRoom() {
             : targetMsg.text
               ? [targetMsg.text]
               : [];
+          const currentThinking = targetMsg.regeneratedThinking
+          ? [...targetMsg.regeneratedThinking]
+          : [""];
 
           // Add a placeholder for the new response
           currentResponses.push("...");
+          currentThinking.push("");
 
           targetMsg.regeneratedResponses = currentResponses;
+          targetMsg.regeneratedThinking = currentThinking;
           targetMsg.currentResponseIndex = currentResponses.length - 1;
           targetMsg.text = "..."; // Show loading...
+          targetMsg.thinking = "";
 
           updated[targetMessageIndex] = targetMsg;
           return updated;
@@ -1912,6 +1919,7 @@ export default function AIChatRoom() {
               sender: "ai" as const,
               text: "...",
               regeneratedResponses: ["..."],
+              regeneratedThinking: [""],
               currentResponseIndex: 0,
             },
           ];
@@ -1954,7 +1962,7 @@ export default function AIChatRoom() {
                   if (targetIdx >= 0 && targetIdx < updated.length) {
                     const msg = { ...updated[targetIdx] };
                     if (content) msg.text = aiResponse;
-                    msg.thinking = aiThinking; // <-- add this
+                    msg.thinking = aiThinking;
 
                     if (
                       msg.regeneratedResponses &&
@@ -1963,7 +1971,14 @@ export default function AIChatRoom() {
                       const newRegen = [...msg.regeneratedResponses];
                       newRegen[msg.currentResponseIndex] = msg.text;
                       msg.regeneratedResponses = newRegen;
-                    } else {
+                    }
+                    if (msg.regeneratedThinking && msg.currentResponseIndex !== undefined) {
+                      const newRegenThinking = [...msg.regeneratedThinking];
+                      // if showThinking is off, store "" so indexes stay aligned
+                      newRegenThinking[msg.currentResponseIndex] = showThinking ? aiThinking : "";
+                      msg.regeneratedThinking = newRegenThinking;
+                    }
+                    else {
                       msg.regeneratedResponses = [msg.text];
                       msg.currentResponseIndex = 0;
                     }
@@ -2004,8 +2019,26 @@ export default function AIChatRoom() {
       console.log("Full AI thinking:", aiThinking);
     } catch (error) {
       if ((error as any).name === "AbortError") {
-        console.log("Request was aborted");
-        return; // Don't show error message if user stopped it
+        setMessages((prev) => {
+          const updated = [...prev];
+          const idx = targetMessageIndex ?? updated.length - 1;
+          if (updated[idx]) {
+            const msg = { ...updated[idx] };
+            // No response was produced — set response to "" but keep thinking
+            if (aiResponse === "") {
+              msg.text = "";
+              if (msg.regeneratedResponses && msg.currentResponseIndex !== undefined) {
+                const newRegen = [...msg.regeneratedResponses];
+                newRegen[msg.currentResponseIndex] = "";
+                msg.regeneratedResponses = newRegen;
+              }
+            }
+            // regeneratedThinking already has whatever was streamed — leave it
+            updated[idx] = msg;
+          }
+          return updated;
+        });
+        return;
       }
       console.error("Error:", error);
       setMessages((prev) => {
