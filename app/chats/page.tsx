@@ -4434,7 +4434,10 @@ export default function AIChatRoom() {
                   {fileNames ? "Clear Files" : "Upload Files"}
                 </span>
                 {fileNames ? (
-                  <button onClick={() => clearFiles()} aria-label="Clear Files"/>
+                  <button
+                    onClick={() => clearFiles()}
+                    aria-label="Clear Files"
+                  />
                 ) : (
                   <input
                     type="file"
@@ -4478,22 +4481,26 @@ export default function AIChatRoom() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="💬 Type your message here..."
                 disabled={isLoadingRef.current}
-                onKeyDown={(e) => {
-                  if (
-                    e.key === "Enter" &&
-                    !e.shiftKey &&
-                    !isLoadingRef.current &&
-                    apiKey !== "" &&
-                    validated
-                  ) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                  if (e.key === "Escape" && !isLoadingRef.current) {
-                    e.preventDefault();
-                    document.querySelector("textarea")?.blur();
-                  }
-                }}
+                onKeyDown={
+                  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+                    ? undefined
+                    : (e) => {
+                        if (
+                          e.key === "Enter" &&
+                          !e.shiftKey &&
+                          !isLoadingRef.current &&
+                          apiKey !== "" &&
+                          validated
+                        ) {
+                          e.preventDefault();
+                          sendMessage();
+                        }
+                        if (e.key === "Escape" && !isLoadingRef.current) {
+                          e.preventDefault();
+                          document.querySelector("textarea")?.blur();
+                        }
+                      }
+                }
               />
               <button
                 className={`${
@@ -4520,17 +4527,26 @@ export default function AIChatRoom() {
                 }
               >
                 {apiKey === "" || !validated ? (
-                  <span className="flex items-center gap-2" aria-label="Validate API Key">
+                  <span
+                    className="flex items-center gap-2"
+                    aria-label="Validate API Key"
+                  >
                     <span>🔑</span>
                     <span className="hidden lg:inline">Validate</span>
                   </span>
                 ) : isLoadingRef.current ? (
-                  <span className="flex items-center gap-2" aria-label="Stop Response">
+                  <span
+                    className="flex items-center gap-2"
+                    aria-label="Stop Response"
+                  >
                     <span>⏹</span>
                     <span className="hidden lg:inline">Stop</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2" aria-label="Send Message">
+                  <span
+                    className="flex items-center gap-2"
+                    aria-label="Send Message"
+                  >
                     <span>📤</span>
                     <span className="hidden lg:inline">Send</span>
                   </span>
