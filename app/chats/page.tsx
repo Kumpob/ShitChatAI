@@ -4531,7 +4531,7 @@ export default function AIChatRoom() {
                   </span>
                 ) : (
                   <span className="flex items-center gap-2" aria-label="Send Message">
-                    <span>🡑</span>
+                    <span>📤</span>
                     <span className="hidden lg:inline">Send</span>
                   </span>
                 )}
