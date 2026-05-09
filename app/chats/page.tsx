@@ -4102,7 +4102,7 @@ export default function AIChatRoom() {
                             {msg.sender === "ai" && (
                               <button
                                 className="text-xs cursor-pointer disabled:cursor-not-allowed text-green-500 hover:text-green-700 transition-colors disabled:opacity-50"
-                                disabled={i == 0 || i != messages.length - 1}
+                                disabled={i === 0 || i !== messages.length - 1}
                                 onClick={() =>
                                   DeleteAndRegenerateChat(
                                     getCurrentCharacter()?.id || "",
@@ -4142,7 +4142,7 @@ export default function AIChatRoom() {
                                   deleteMessage(i);
                                 }
                               }}
-                              disabled={i === 0 || i === messages.length - 1}
+                              disabled={i === 0 || i === messages.length - 1 || msg.sender === "ai"}
                             >
                               🗑️ Delete
                             </button>
