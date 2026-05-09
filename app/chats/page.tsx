@@ -4246,18 +4246,21 @@ export default function AIChatRoom() {
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-blue-500 hover:bg-blue-600"
                 } text-white px-5 py-3 rounded-lg shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center min-w-[80px]`}
-                onClick={isLoadingRef.current ? stopResponse : sendMessage}
+                onClick={apiKey === "" || !validated ? () => {setSettingsTab("api"); setShowSettings(true);}: (isLoadingRef.current ? stopResponse : sendMessage)}
                 disabled={
                   (!isLoadingRef.current &&
-                    (apiKey === "" || !validated || !input.trim())) ||
+                    (!input.trim())) ||
                   (isLoadingRef.current && !abortControllerRef.current)
                 }
               >
-                {isLoadingRef.current ? (
+                {apiKey === "" || !validated ? (
+                  <span className="flex items-center gap-2">🔑 Validate</span>
+                ):(
+                isLoadingRef.current ? (
                   <span className="flex items-center gap-2">⏹️ Stop</span>
                 ) : (
                   <span className="flex items-center gap-2">📤 Send</span>
-                )}
+                ))}
               </button>
             </div>
             {apiKey === "" && (
