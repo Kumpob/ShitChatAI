@@ -182,3 +182,22 @@ body {
 .user-message .message-content th {
   color: #52525b;
 }
+
+.user-attachment summary {
+  list-style: none;
+  padding: 2px 0;
+}
+
+.user-attachment summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-attachment[open] summary::before {
+  content: "▼ ";
+  font-size: 0.7em;
+}
+
+.user-attachment:not([open]) summary::before {
+  content: "▶ ";
+  font-size: 0.7em;
+}

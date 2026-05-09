@@ -2189,6 +2189,46 @@ export default function AIChatRoom() {
     setShowDeleteChatModal(false);
   };
 
+const formatUserMessage = (text: string): { attachmentsHtml: string; userQuestion: string } => {
+  const separator = "=".repeat(25);
+  const parts = text.split(separator);
+
+  if (parts.length < 2) return { attachmentsHtml: "", userQuestion: text };
+
+  const fileSection = parts.slice(0, -1).join(separator);
+  const userQuestion = parts[parts.length - 1].trim();
+
+  const fileRegex = /<file\s+name="([^"]+)"[^>]*>([\s\S]*?)<\/file>/g;
+  const files: { name: string; content: string }[] = [];
+  let match;
+  while ((match = fileRegex.exec(fileSection)) !== null) {
+    files.push({ name: match[1], content: match[2].trim() });
+  }
+
+  if (files.length === 0) return { attachmentsHtml: "", userQuestion };
+
+  const filesHtml = files
+    .map((f) =>
+      `<details class="user-attachment">` +
+      `<summary class="cursor-pointer hover:opacity-100 select-none">📄 ${f.name}</summary>` +
+      `<pre class="mt-1 text-xs whitespace-pre-wrap break-words">${f.content
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")}</pre>` +
+      `</details>`
+    )
+    .join("");
+
+  const attachmentsHtml =
+    `<div class="mb-2 opacity-70">` +
+    `<div class="text-xs mb-1">📎 attached:</div>` +
+    filesHtml +
+    `<hr class="my-2 border-white/30">` +
+    `</div>`;
+
+  return { attachmentsHtml, userQuestion };
+};
+
   const formatText = (text: string, sender: "user" | "ai" = "ai"): string => {
     const character = getCurrentCharacter();
     const replaced = text
@@ -2203,19 +2243,36 @@ export default function AIChatRoom() {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    if (sender === "user") {
-      // Escape # at the start of lines so marked doesn't treat them as headings
-      const noHeadings = escaped.replace(
-        /^(#{1,6})\s/gm,
-        (_, hashes) =>
-          hashes
-            .split("")
-            .map(() => "&#35;")
-            .join("") + " ",
-      );
-      const rawHtml = marked.parse(noHeadings);
-      return typeof rawHtml === "string" ? rawHtml : escaped;
-    }
+if (sender === "user") {
+  const separator = "=".repeat(25);
+  const hasAttachments = replaced.includes(separator);
+
+  if (hasAttachments) {
+    const { attachmentsHtml, userQuestion } = formatUserMessage(replaced);
+
+    // Only run marked on the actual question text
+    const escapedQuestion = userQuestion
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const noHeadings = escapedQuestion.replace(/^(#{1,6})\s/gm, (_, hashes) =>
+      hashes.split("").map(() => "&#35;").join("") + " "
+    );
+    const questionHtml = marked.parse(noHeadings);
+    // Concatenate raw attachment HTML + parsed question — never mix them
+    return attachmentsHtml + (typeof questionHtml === "string" ? questionHtml : escapedQuestion);
+  }
+
+  const escaped = replaced
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const noHeadings = escaped.replace(/^(#{1,6})\s/gm, (_, hashes) =>
+    hashes.split("").map(() => "&#35;").join("") + " "
+  );
+  const rawHtml = marked.parse(noHeadings);
+  return typeof rawHtml === "string" ? rawHtml : escaped;
+}
 
     const rawHtml = marked.parse(escaped);
     return typeof rawHtml === "string" ? rawHtml : escaped;
