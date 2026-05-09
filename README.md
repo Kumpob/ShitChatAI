@@ -1,6 +1,6 @@
 # **ShitChatAI**
 
-A lightweight, client-side AI chat app where you can create characters, customize prompts, upload images, manage chats, and talk to AI models via **OpenRouter**, **DeepSeek**, **OpenAI**, or any OpenAI-compatible API endpoint.
+A lightweight, client-side AI chat app where you can create characters, customize prompts, upload files and images, manage chats, and talk to AI models via **OpenRouter**, **DeepSeek**, **OpenAI**, or any OpenAI-compatible API endpoint.
 All data (characters, chats, images, presets) is stored **locally in your browser** — nothing is uploaded to any server.
 
 ---
@@ -21,6 +21,13 @@ All data (characters, chats, images, presets) is stored **locally in your browse
 * Message editing (inline, with auto-resize)
 * Delete individual messages
 * Chat history saved locally and restored on reload
+
+### 📎 **File Uploads**
+
+* Attach files directly in the chat input — text is extracted client-side and included with your message
+* Supports plain text and code files: `.txt`, `.md`, `.html`, `.json`, `.js`, `.ts`, `.tsx`, `.jsx`, `.css`, `.scss`, `.py`, `.java`, `.c`, `.cpp`, `.cs`, `.go`, `.rs`, `.php`, `.rb`, `.xml`, `.yaml`, `.yml`, `.sql`, `.sh`
+* Supports document formats: `.pdf` (via `pdfjs-dist`) and `.docx` (via `mammoth`)
+* Multiple files can be attached at once
 
 ### 🔄 **AI Responses**
 
@@ -110,6 +117,8 @@ Your API key is stored locally and only sent to your configured endpoint.
 * **React + TypeScript**
 * **TailwindCSS**
 * **marked** — Markdown rendering
+* **pdfjs-dist** — Client-side PDF text extraction
+* **mammoth** — Client-side DOCX text extraction
 * **OpenAI-compatible streaming API**
 * Client-side image processing (Canvas, WebP/JPEG compression)
 * `localStorage` for all persistence
@@ -143,7 +152,7 @@ npm run start
 
 ### 🔒 **All data is local**
 
-Nothing is uploaded — not your chats, API key, characters, or images. Everything lives in your browser's `localStorage`.
+Nothing is uploaded — not your chats, API key, characters, images, or attached files. Everything lives in your browser's `localStorage`.
 
 ### 📱 **Mobile limitations**
 
