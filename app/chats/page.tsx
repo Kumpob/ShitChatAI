@@ -4459,7 +4459,7 @@ export default function AIChatRoom() {
                 <p className="mt-2 text-sm text-gray-400">{fileNames}</p>
               ) : (
                 <p className="mt-2 text-sm text-gray-400">
-                  Text files only. PDF not supported on iOS
+                  Text-based files only. PDF not supported on iOS
                 </p>
               )}
             </div>
@@ -4521,20 +4521,25 @@ export default function AIChatRoom() {
                 )}
               </button>
             </div>
-            {apiKey === "" && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Please enter your API key and validate it in the setting to sent
-                messages.
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full items-center">
+              {!validated ? (
+                <p className="text-xs text-gray-500 text-start">
+                  Please validate your API key in the setting to send messages.
+                </p>
+              ) : (
+                <div />
+              )}
+
+              <p className="text-xs text-gray-500 text-center">
+                AI can produce incorrect or misleading responses. Always verify
+                information from reliable sources.
               </p>
-            )}
-            {!validated && apiKey !== "" && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Please validate your API key in the setting to send messages.
+
+              <p className="text-xs text-gray-500 text-end">
+                Press ⏎ Enter to send, ⇧ Shift+⏎ Enter for new line
               </p>
-            )}
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              Press ⏎ Enter to send, ⇧ Shift+⏎ Enter for new line
-            </p>
+            </div>
           </div>
         </div>
       </div>
