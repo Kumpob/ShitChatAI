@@ -4427,11 +4427,14 @@ export default function AIChatRoom() {
           >
             <div className="mb-3 flex items-center justify-start gap-2">
               <label className="inline-block cursor-pointer rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
-                Upload Files
-                <input
-                  type="file"
-                  multiple
-                  accept="
+                {fileNames ? "❌ Clear Files" : "📎 Upload Files"}
+                {fileNames ? (
+                  <button onClick={() => clearFiles()} />
+                ) : (
+                  <input
+                    type="file"
+                    multiple
+                    accept="
                     .txt,.md,.html,.htm,.json,
                     .js,.ts,.tsx,.jsx,
                     .css,.scss,
@@ -4440,19 +4443,24 @@ export default function AIChatRoom() {
                     .xml,.yaml,.yml,.sql,.sh,
                     .pdf,.docx
                   "
-                  ref={fileInputRef}
-                  onChange={(e) => {
-                    handleFiles(e);
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      handleFiles(e);
 
-                    const files = Array.from(e.target.files || []);
-                    setFileNames(files.map((file) => file.name).join(", "));
-                  }}
-                  className="hidden"
-                />
+                      const files = Array.from(e.target.files || []);
+                      setFileNames(files.map((file) => file.name).join(", "));
+                    }}
+                    className="hidden"
+                  />
+                )}
               </label>
 
-              {fileNames && (
+              {fileNames ? (
                 <p className="mt-2 text-sm text-gray-400">{fileNames}</p>
+              ) : (
+                <p className="mt-2 text-sm text-gray-400">
+                  Text files only. PDF not supported on iOS
+                </p>
               )}
             </div>
 
