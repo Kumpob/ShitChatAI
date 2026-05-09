@@ -220,14 +220,35 @@ export default function Help({
                 <div className="flex items-start gap-2">
                   <span>•</span>
                   <span>
-                    <strong>Regeneration:</strong> Delete AI messages to
-                    regenerate
+                    <strong>Regeneration:</strong> Press R or click 🔄 to
+                    regenerate — cycle through multiple responses with ◀ ▶
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span>•</span>
                   <span>
-                    <strong>Import Characters:</strong> Import from JSON
+                    <strong>Branch Chat:</strong> Fork any conversation from a
+                    specific message to explore alternate paths
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    <strong>Thinking / Reasoning:</strong> Toggle reasoning mode
+                    and adjust effort level for supported models
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    <strong>API Presets:</strong> Save and switch between
+                    multiple API configurations
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    <strong>Import Characters:</strong> Import from JSON or PNG
                     character cards
                   </span>
                 </div>
@@ -241,6 +262,58 @@ export default function Help({
               </div>
             </div>
 
+
+            {/* File Uploads */}
+            <div className="bg-cyan-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-cyan-800 mb-3">
+                📁 File Uploads
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    Upload text and code files directly into chats
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    Supported formats: TXT, MD, PDF, DOCX, HTML, PY, JS, TS,
+                    JSON, CSS, and more
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    Multiple files can be uploaded at once
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    File contents are automatically extracted and sent to the AI
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span>•</span>
+                  <span>
+                    Great for code reviews, debugging, summaries, and project
+                    assistance
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-cyan-600 mt-3">
+                💡 Uploaded files are inserted into the prompt as structured AI-readable context.
+              </p>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-red-500">
+                  ⚠️ Image, audio, and video files (JPG, PNG, MP3, MP4, etc.) are not supported — the AI will not be able to see or read them.
+                </p>
+                <p className="text-xs text-red-500">
+                  ⚠️ PDF uploads do not work on iOS Safari due to browser limitations.
+                </p>
+              </div>
+            </div>
             {/* API Information */}
             <div className="bg-orange-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold text-orange-800 mb-3">
@@ -304,6 +377,7 @@ export default function Help({
                 </p>
                 <p>• Press E to quickly edit your latest message</p>
                 <p>• Press R to regenerate the last AI response</p>
+                <p>• Use ◀ ▶ to cycle through multiple regenerated responses</p>
                 <p>• Press ESC to cancel editing or close modals</p>
                 <p>
                   • Use keyboard shortcuts for quick navigation (H for help, U
@@ -313,8 +387,8 @@ export default function Help({
                 <p>• Import character cards for quick setup</p>
                 <p>• Customize system prompts for specific AI behavior</p>
                 <p>• Use placeholders to make prompts dynamic</p>
-                <p>• Regenerate responses by deleting AI messages</p>
                 <p>• Edit messages to fix typos or improve responses</p>
+                <p>• Attach files to share code or documents with the AI</p>
                 <p>• Press ` (backtick) to quickly toggle the sidebar</p>
               </div>
             </div>
