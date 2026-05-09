@@ -2843,8 +2843,10 @@ export default function AIChatRoom() {
             <button
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
               onClick={() => setShowSettings(true)}
+              aria-label="Settings"
             >
-              ⚙️ Settings
+              <span>⚙️</span>
+              <span className="hidden lg:inline">Settings</span>
             </button>
           </div>
         </div>
@@ -4426,10 +4428,13 @@ export default function AIChatRoom() {
             className="bg-white rounded-xl p-3 shadow-lg border border-gray-200"
           >
             <div className="mb-3 flex items-center justify-start gap-2">
-              <label className="inline-block cursor-pointer rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
-                {fileNames ? "❌ Clear Files" : "📎 Upload Files"}
+              <label className="inline-block cursor-pointer rounded-lg bg-blue-500 px-2 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
+                <span>{fileNames ? "❌" : "📎"}</span>
+                <span className="hidden lg:inline">
+                  {fileNames ? "Clear Files" : "Upload Files"}
+                </span>
                 {fileNames ? (
-                  <button onClick={() => clearFiles()} />
+                  <button onClick={() => clearFiles()} aria-label="Clear Files"/>
                 ) : (
                   <input
                     type="file"
@@ -4451,17 +4456,16 @@ export default function AIChatRoom() {
                       setFileNames(files.map((file) => file.name).join(", "));
                     }}
                     className="hidden"
+                    aria-label="Upload Files"
                   />
                 )}
               </label>
 
-              {fileNames ? (
-                <p className="mt-2 text-sm text-gray-400">{fileNames}</p>
-              ) : (
-                <p className="mt-2 text-sm text-gray-400">
-                  Text-based files only. PDF not supported on iOS
-                </p>
-              )}
+              <p className="mt-2 text-sm text-gray-400">
+                {fileNames
+                  ? `${fileNames}`
+                  : "Text-based only. PDF not supported on iOS."}
+              </p>
             </div>
 
             <div className="flex space-x-3">
@@ -4469,7 +4473,7 @@ export default function AIChatRoom() {
                 id="messageInput"
                 ref={messageInputRef}
                 className="flex-1 border-0 text-black bg-gray-100 rounded-lg p-3 resize-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all overflow-y-auto"
-                rows={2}
+                rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="💬 Type your message here..."
@@ -4496,7 +4500,7 @@ export default function AIChatRoom() {
                   isLoadingRef.current
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-blue-500 hover:bg-blue-600"
-                } text-white px-5 py-3 rounded-lg shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center min-w-[80px]`}
+                } text-white px-5 py-3 rounded-lg shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center min-w-[50px]`}
                 onClick={
                   apiKey === "" || !validated
                     ? () => {
@@ -4508,16 +4512,28 @@ export default function AIChatRoom() {
                       : sendMessage
                 }
                 disabled={
-                  (!isLoadingRef.current && !input.trim() && validated) ||
+                  (!isLoadingRef.current &&
+                    !input.trim() &&
+                    validated &&
+                    !fileNames) ||
                   (isLoadingRef.current && !abortControllerRef.current)
                 }
               >
                 {apiKey === "" || !validated ? (
-                  <span className="flex items-center gap-2">🔑 Validate</span>
+                  <span className="flex items-center gap-2" aria-label="Validate API Key">
+                    <span>🔑</span>
+                    <span className="hidden lg:inline">Validate</span>
+                  </span>
                 ) : isLoadingRef.current ? (
-                  <span className="flex items-center gap-2">⏹️ Stop</span>
+                  <span className="flex items-center gap-2" aria-label="Stop Response">
+                    <span>⏹</span>
+                    <span className="hidden lg:inline">Stop</span>
+                  </span>
                 ) : (
-                  <span className="flex items-center gap-2">📤 Send</span>
+                  <span className="flex items-center gap-2" aria-label="Send Message">
+                    <span>🡑</span>
+                    <span className="hidden lg:inline">Send</span>
+                  </span>
                 )}
               </button>
             </div>
@@ -4532,11 +4548,13 @@ export default function AIChatRoom() {
               )}
 
               <p className="text-xs text-gray-500 text-center">
-                AI can produce incorrect or misleading responses. Always verify
-                information from reliable sources.
+                <span>AI can produce incorrect or misleading responses.</span>
+                <span className="hidden lg:inline">
+                  Always verify information from reliable sources.
+                </span>
               </p>
 
-              <p className="text-xs text-gray-500 text-end">
+              <p className="hidden lg:block text-xs text-gray-500 text-end">
                 Press ⏎ Enter to send, ⇧ Shift+⏎ Enter for new line
               </p>
             </div>
