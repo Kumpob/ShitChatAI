@@ -136,6 +136,8 @@ export default function AIChatRoom() {
 
   const [usejpg, setUsejpg] = useState<boolean>(false);
 
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt = defaultpromptx;
   const defaultpromptRP = defaultpromptRPx;
@@ -4482,7 +4484,7 @@ export default function AIChatRoom() {
                 placeholder="💬 Type your message here..."
                 disabled={isLoadingRef.current}
                 onKeyDown={
-                  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+                  isMobile
                     ? undefined
                     : (e) => {
                         if (
@@ -4565,14 +4567,15 @@ export default function AIChatRoom() {
 
               <p className="text-xs text-gray-500 text-center">
                 <span>AI can produce incorrect or misleading responses.</span>
-                <span className="hidden lg:inline">
-                  Always verify information from reliable sources.
-                </span>
+                {isMobile ? null:(<span className="hidden lg:inline">
+                  {" "}Always verify information from reliable sources.
+                </span>)}
               </p>
-
-              <p className="hidden lg:block text-xs text-gray-500 text-end">
-                Press ⏎ Enter to send, ⇧ Shift+⏎ Enter for new line
-              </p>
+              {isMobile ? null:(
+                <p className="text-xs text-gray-500 text-end">
+                  Press ⏎ Enter to send, ⇧ Shift+⏎ Enter for new line
+                </p>
+              )}
             </div>
           </div>
         </div>
