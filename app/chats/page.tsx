@@ -20,6 +20,7 @@ import {
   optimizeToTargetSize,
   estimateBase64Size,
 } from "./imageUtils";
+import { extractTextFromFiles } from "./extractTextFromFiles";
 
 export default function AIChatRoom() {
   // State management
@@ -48,6 +49,10 @@ export default function AIChatRoom() {
   const [userThumbnail, setUserThumbnail] = useState<string>("");
   const [userFullImage, setUserFullImage] = useState<string>("");
   const [userPresets, setUserPresets] = useState<UserPreset[]>([]);
+  const [fileNames, setFileNames] = useState("");
+  const [fileTexts, setFileTexts] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [openCopyDropdown, setOpenCopyDropdown] = useState<number | null>(null);
   // const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(
   //   undefined
   // );
@@ -1103,8 +1108,10 @@ export default function AIChatRoom() {
         if (showDeleteChatModal) setShowDeleteChatModal(false);
         if (editingChatId) cancelEditChatName();
         if (showHelp) setShowHelp(false);
+        if (openCopyDropdown !== null) setOpenCopyDropdown(null); // add here
       }
     };
+
     const handlegravekey = (event: KeyboardEvent) => {
       const isTextAreaOrInput =
         event.target instanceof HTMLTextAreaElement ||
@@ -1460,7 +1467,15 @@ export default function AIChatRoom() {
     isSidebarOpen,
     showHelp,
     messages,
+    openCopyDropdown,
   ]);
+
+  useEffect(() => {
+    if (openCopyDropdown === null) return;
+    const handleClickOutside = () => setOpenCopyDropdown(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [openCopyDropdown]);
 
   // Auto-resize message input
   useEffect(() => {
@@ -1671,9 +1686,21 @@ export default function AIChatRoom() {
 
   function stripMarkdown(text: string): string {
     return text
-      .replace(/^>\s?/gm, "") // remove blockquotes
-      .replace(/\*\*/g, "") // remove bold
-      .replace(/_/g, ""); // remove italics
+      .replace(/^#{1,6}\s+/gm, "") // headings
+      .replace(/\*\*(.*?)\*\*/g, "$1") // bold **text**
+      .replace(/__(.*?)__/g, "$1") // bold __text__
+      .replace(/\*(.*?)\*/g, "$1") // italic *text*
+      .replace(/_(.*?)_/g, "$1") // italic _text_
+      .replace(/~~(.*?)~~/g, "$1") // strikethrough
+      .replace(/`{3}[^\n]*\n([\s\S]*?)`{3}/g, "$1") // code blocks — keep content, strip fences
+      .replace(/`([^`]+)`/g, "$1") // inline code
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → just label
+      .replace(/^>\s?/gm, "") // blockquotes
+      .replace(/^[-*+]\s+/gm, "• ") // unordered lists
+      .replace(/^\d+\.\s+/gm, "") // ordered lists
+      .replace(/^[-*_]{3,}$/gm, "") // horizontal rules
+      .replace(/\n{3,}/g, "\n\n") // collapse excess newlines
+      .trim();
   }
 
   function copyToClipboard(text: string): void {
@@ -2162,7 +2189,7 @@ export default function AIChatRoom() {
     setShowDeleteChatModal(false);
   };
 
-  const formatText = (text: string): string => {
+  const formatText = (text: string, sender: "user" | "ai" = "ai"): string => {
     const character = getCurrentCharacter();
     const replaced = text
       .replace(/\{\{user\}\}/g, userName)
@@ -2171,23 +2198,46 @@ export default function AIChatRoom() {
       .replace(/\{\{p2\}\}/g, userPronouns.p2)
       .replace(/\{\{p3\}\}/g, userPronouns.p3);
 
-    const rawHtml = marked.parse(replaced);
-    return typeof rawHtml === "string" ? rawHtml : replaced;
+    const escaped = replaced
+      .replace(/&/g, "&amp;") // must be first
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    if (sender === "user") {
+      // Escape # at the start of lines so marked doesn't treat them as headings
+      const noHeadings = escaped.replace(
+        /^(#{1,6})\s/gm,
+        (_, hashes) =>
+          hashes
+            .split("")
+            .map(() => "&#35;")
+            .join("") + " ",
+      );
+      const rawHtml = marked.parse(noHeadings);
+      return typeof rawHtml === "string" ? rawHtml : escaped;
+    }
+
+    const rawHtml = marked.parse(escaped);
+    return typeof rawHtml === "string" ? rawHtml : escaped;
   };
 
   const sendMessage = async (): Promise<void> => {
-    if (!input.trim() || isLoadingRef.current) return;
+    if (isLoadingRef.current) return;
 
     const character = getCurrentCharacter();
     if (!character) return;
 
-    const userMessage = input;
+    const finalInput = (fileTexts + input.trimStart()).trim();
+    if (!finalInput) return;
+
+    const userMessage = finalInput;
     const newMessages = [
       ...messages,
       { sender: "user" as const, text: userMessage },
     ];
     setMessages(newMessages);
     setInput("");
+    clearFiles();
     setIsLoading(true);
     isLoadingRef.current = true;
 
@@ -2374,6 +2424,49 @@ export default function AIChatRoom() {
     setEditApiPresetKey("");
     setToastMessage("API preset updated!");
     setValidcolor("bg-green-400/50");
+  };
+
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+
+    const extracted = await extractTextFromFiles(e.target.files);
+    console.log("Raw extracted data:", extracted);
+    /*
+      Output:
+      [
+        {
+          fileName: "example.pdf",
+          fileType: "pdf",
+          text: "all extracted text..."
+        }
+      ]
+    */
+
+    const formattedFiles =
+      formatFiles(extracted) + "\n\n=========================\n\n";
+    setFileTexts(formattedFiles);
+  };
+  function formatFiles(
+    extracted: { fileName: string; fileType: string; text: string }[],
+  ): string {
+    return extracted
+      .map(({ fileName, fileType, text }) => {
+        return [
+          `<file name="${fileName}" type="${fileType}">`,
+          text.trim(),
+          "</file>",
+        ].join("\n");
+      })
+      .join("\n\n=========================\n\n");
+  }
+
+  const clearFiles = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    setFileTexts("");
+    setFileNames("");
   };
 
   if (consentGiven === false) {
@@ -3977,7 +4070,7 @@ export default function AIChatRoom() {
                 <div
                   className={`max-w-xs lg:max-w-4xl rounded-2xl p-4 shadow-sm transition-all ${
                     msg.sender === "user"
-                      ? "bg-blue-500 text-white rounded-br-none"
+                      ? "bg-blue-500 text-white rounded-br-none user-message"
                       : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
                   }`}
                 >
@@ -4073,7 +4166,7 @@ export default function AIChatRoom() {
                           <div
                             className="mt-2 text-xs opacity-70 border-l-2 border-gray-300 pl-2 whitespace-pre-wrap break-words"
                             dangerouslySetInnerHTML={{
-                              __html: formatText(msg.thinking),
+                              __html: formatText(msg.thinking, msg.sender),
                             }}
                           />
                         </details>
@@ -4081,7 +4174,7 @@ export default function AIChatRoom() {
                       <div
                         className="message-content overflow-x-auto break-words"
                         dangerouslySetInnerHTML={{
-                          __html: formatText(msg.text),
+                          __html: formatText(msg.text, msg.sender),
                         }}
                       />
                       {msg.sender === "ai" &&
@@ -4126,16 +4219,49 @@ export default function AIChatRoom() {
                                 🌿 Branch
                               </button>
                             )}
-                            <button
-                              className={`text-xs cursor-pointer ${
-                                msg.sender === "user"
-                                  ? "text-gray-200 hover:text-gray-300"
-                                  : "text-blue-500 hover:text-blue-700"
-                              }  transition-colors`}
-                              onClick={() => copyToClipboard(msg.text)}
-                            >
-                              📋 Copy
-                            </button>
+                            <div className="relative">
+                              <button
+                                className={`text-xs cursor-pointer ${
+                                  msg.sender === "user"
+                                    ? "text-gray-200 hover:text-gray-300"
+                                    : "text-blue-500 hover:text-blue-700"
+                                } transition-colors`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenCopyDropdown(
+                                    openCopyDropdown === i ? null : i,
+                                  );
+                                }}
+                              >
+                                📋 Copy
+                              </button>
+                              {openCopyDropdown === i && (
+                                <div className="absolute bottom-6 left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden text-gray-700 min-w-max">
+                                  <button
+                                    className="block w-full text-left text-xs px-3 py-2 hover:bg-gray-100 transition-colors"
+                                    onClick={() => {
+                                      copyToClipboard(msg.text);
+                                      setOpenCopyDropdown(null);
+                                      setToastMessage("Copied as plain text!");
+                                      setValidcolor("bg-blue-400/50");
+                                    }}
+                                  >
+                                    📄 Copy as plain text
+                                  </button>
+                                  <button
+                                    className="block w-full text-left text-xs px-3 py-2 hover:bg-gray-100 transition-colors"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(msg.text);
+                                      setOpenCopyDropdown(null);
+                                      setToastMessage("Copied with markdown!");
+                                      setValidcolor("bg-blue-400/50");
+                                    }}
+                                  >
+                                    ✍️ Copy with markdown
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                             <button
                               className="text-xs cursor-pointer disabled:cursor-not-allowed text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
                               onClick={() => {
@@ -4221,6 +4347,37 @@ export default function AIChatRoom() {
             ref={inputContainerRef}
             className="bg-white rounded-xl p-3 shadow-lg border border-gray-200"
           >
+            <div className="mb-3 flex items-center justify-start gap-2">
+              <label className="inline-block cursor-pointer rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
+                Upload Files
+                <input
+                  type="file"
+                  multiple
+                  accept="
+                    .txt,.md,.html,.htm,.json,
+                    .js,.ts,.tsx,.jsx,
+                    .css,.scss,
+                    .py,.java,.c,.cpp,.cs,
+                    .go,.rs,.php,.rb,
+                    .xml,.yaml,.yml,.sql,.sh,
+                    .pdf,.docx
+                  "
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    handleFiles(e);
+
+                    const files = Array.from(e.target.files || []);
+                    setFileNames(files.map((file) => file.name).join(", "));
+                  }}
+                  className="hidden"
+                />
+              </label>
+
+              {fileNames && (
+                <p className="mt-2 text-sm text-gray-400">{fileNames}</p>
+              )}
+            </div>
+
             <div className="flex space-x-3">
               <textarea
                 id="messageInput"
