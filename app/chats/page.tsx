@@ -1892,8 +1892,8 @@ export default function AIChatRoom() {
               ? [targetMsg.text]
               : [];
           const currentThinking = targetMsg.regeneratedThinking
-          ? [...targetMsg.regeneratedThinking]
-          : [""];
+            ? [...targetMsg.regeneratedThinking]
+            : [""];
 
           // Add a placeholder for the new response
           currentResponses.push("...");
@@ -1909,8 +1909,6 @@ export default function AIChatRoom() {
           return updated;
         } else if (regen || updated.length === messages.length) {
           // New message (either regen new or normal send)
-          // Note: messages passed to this func does NOT include the new user message if normal send?
-          // Actually sendMessage adds user message then calls this.
           // If normal send, targetMessageIndex is undefined. We append.
 
           return [
@@ -1969,45 +1967,29 @@ export default function AIChatRoom() {
                       msg.currentResponseIndex !== undefined
                     ) {
                       const newRegen = [...msg.regeneratedResponses];
-                      newRegen[msg.currentResponseIndex] = msg.text;
+                      newRegen[msg.currentResponseIndex] = aiResponse;
                       msg.regeneratedResponses = newRegen;
-                    }
-                    if (msg.regeneratedThinking && msg.currentResponseIndex !== undefined) {
-                      const newRegenThinking = [...msg.regeneratedThinking];
-                      // if showThinking is off, store "" so indexes stay aligned
-                      newRegenThinking[msg.currentResponseIndex] = showThinking ? aiThinking : "";
-                      msg.regeneratedThinking = newRegenThinking;
-                    }
-                    else {
-                      msg.regeneratedResponses = [msg.text];
+                    } else {
+                      msg.regeneratedResponses = [aiResponse];
                       msg.currentResponseIndex = 0;
                     }
-                    updated[targetIdx] = msg;
-                  }
+                    if (msg.currentResponseIndex !== undefined) {
+                      const newRegenThinking = msg.regeneratedThinking
+                        ? [...msg.regeneratedThinking]
+                        : Array(msg.regeneratedResponses!.length).fill("");
+                      // if showThinking is off, store "" so indexes stay aligned
+                      newRegenThinking[msg.currentResponseIndex] = showThinking
+                        ? aiThinking
+                        : "";
+                      msg.regeneratedThinking = newRegenThinking;
+                    }
 
-                  // Update characters state
-                  if (selectedCharacterId && selectedChatId) {
-                    const updatedCharacters = characters.map((character) =>
-                      character.id === selectedCharacterId
-                        ? {
-                            ...character,
-                            chats: character.chats.map((chat) =>
-                              chat.id === selectedChatId
-                                ? {
-                                    ...chat,
-                                    messages: updated,
-                                    lastActive: Date.now(),
-                                  }
-                                : chat,
-                            ),
-                          }
-                        : character,
-                    );
-                    setCharacters(updatedCharacters);
+                    updated[targetIdx] = msg;
                   }
 
                   return updated;
                 });
+                // Update characters state
               }
             } catch (e) {
               console.error("Error parsing JSON:", e, line);
@@ -2015,6 +1997,25 @@ export default function AIChatRoom() {
           }
         }
       }
+      setMessages((prev) => {
+        if (selectedCharacterId && selectedChatId) {
+          setCharacters((prevChars) =>
+            prevChars.map((c) =>
+              c.id === selectedCharacterId
+                ? {
+                    ...c,
+                    chats: c.chats.map((chat) =>
+                      chat.id === selectedChatId
+                        ? { ...chat, messages: prev, lastActive: Date.now() }
+                        : chat,
+                    ),
+                  }
+                : c,
+            ),
+          );
+        }
+        return prev; // don't change messages, just read them
+      });
       console.log("Full AI response:", aiResponse);
       console.log("Full AI thinking:", aiThinking);
     } catch (error) {
@@ -2027,7 +2028,10 @@ export default function AIChatRoom() {
             // No response was produced — set response to "" but keep thinking
             if (aiResponse === "") {
               msg.text = "";
-              if (msg.regeneratedResponses && msg.currentResponseIndex !== undefined) {
+              if (
+                msg.regeneratedResponses &&
+                msg.currentResponseIndex !== undefined
+              ) {
                 const newRegen = [...msg.regeneratedResponses];
                 newRegen[msg.currentResponseIndex] = "";
                 msg.regeneratedResponses = newRegen;
@@ -4142,7 +4146,11 @@ export default function AIChatRoom() {
                                   deleteMessage(i);
                                 }
                               }}
-                              disabled={i === 0 || i === messages.length - 1 || msg.sender === "ai"}
+                              disabled={
+                                i === 0 ||
+                                i === messages.length - 1 ||
+                                msg.sender === "ai"
+                              }
                             >
                               🗑️ Delete
                             </button>
@@ -4246,21 +4254,28 @@ export default function AIChatRoom() {
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-blue-500 hover:bg-blue-600"
                 } text-white px-5 py-3 rounded-lg shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center min-w-[80px]`}
-                onClick={apiKey === "" || !validated ? () => {setSettingsTab("api"); setShowSettings(true);}: (isLoadingRef.current ? stopResponse : sendMessage)}
+                onClick={
+                  apiKey === "" || !validated
+                    ? () => {
+                        setSettingsTab("api");
+                        setShowSettings(true);
+                      }
+                    : isLoadingRef.current
+                      ? stopResponse
+                      : sendMessage
+                }
                 disabled={
-                  (!isLoadingRef.current &&
-                    (!input.trim())) ||
+                  (!isLoadingRef.current && !input.trim() && validated) ||
                   (isLoadingRef.current && !abortControllerRef.current)
                 }
               >
                 {apiKey === "" || !validated ? (
                   <span className="flex items-center gap-2">🔑 Validate</span>
-                ):(
-                isLoadingRef.current ? (
+                ) : isLoadingRef.current ? (
                   <span className="flex items-center gap-2">⏹️ Stop</span>
                 ) : (
                   <span className="flex items-center gap-2">📤 Send</span>
-                ))}
+                )}
               </button>
             </div>
             {apiKey === "" && (
