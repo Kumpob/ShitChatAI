@@ -21,7 +21,7 @@ export default function HomePage() {
   if (consentGiven === false) {
     return (
       <div className="min-h-screen bg-gradient-to-r from-indigo-500 to-pink-500 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+        <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
           {/* Age Verification Section */}
           <div className="mb-6 pb-4 border-b border-gray-200">
             <h2 className="text-2xl font-bold text-gray-800 mb-3">
@@ -119,17 +119,34 @@ export default function HomePage() {
 
       {/* 🌟 Foreground content */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-6">
-        <h1 className="text-6xl font-extrabold text-white leading-tight tracking-tight text-center mb-6 drop-shadow-lg">
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes fadeInSlow {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+
+        <h1
+          className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight text-center mb-4 drop-shadow-lg"
+          style={{ animation: "fadeIn 0.7s ease both" }}
+        >
           ShitchatAI
         </h1>
 
-        <p className="text-2xl md:text-3xl text-white opacity-80 mb-12 text-center leading-relaxed">
+        <p
+          className="text-xl md:text-2xl text-white opacity-80 mb-8 text-center leading-relaxed"
+          style={{ animation: "fadeInSlow 0.9s ease both" }}
+        >
           Just like other AI sites, but shittier.
         </p>
 
         <Link
           href="/chats"
-          className="bg-white hover:bg-blue-50 text-blue-600 font-semibold py-4 px-8 rounded-xl shadow-xl transform transition duration-300 ease-in-out hover:scale-105 mt-8"
+          className="bg-white hover:bg-blue-50 text-blue-600 font-semibold py-4 px-10 rounded-xl shadow-xl transform transition duration-300 ease-in-out hover:scale-105"
         >
           Enter
         </Link>
