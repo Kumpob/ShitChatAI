@@ -15,7 +15,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ShitChat- AI Chatbot",
   description: "Just like other AI sites, but shittier.",
+  manifest: '/manifest.json',
+  themeColor: '#000000',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'My App',
+  },
 };
+
+export const viewport = {
+  themeColor: '#000000',
+}
+
 
 export default function RootLayout({
   children,
@@ -24,6 +36,28 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta
+          name="apple-mobile-web-app-capable"
+          content="yes"
+        />
+
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="default"
+        />
+
+        <meta
+          name="apple-mobile-web-app-title"
+          content="My App"
+        />
+
+        <link
+          rel="apple-touch-icon"
+          href="/icons/192.png"
+        />
+      </head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
