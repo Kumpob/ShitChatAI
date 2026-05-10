@@ -201,3 +201,42 @@ body {
   content: "▶ ";
   font-size: 0.7em;
 }
+
+.code-block-wrapper {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #d1d5db;
+  padding: 0.25rem 0.75rem;
+}
+
+.code-lang {
+  font-size: 0.75rem;
+  color: #4b5563;
+  font-family: monospace;
+}
+
+.copy-code-btn {
+  font-size: 0.75rem;
+  color: #4b5563;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.copy-code-btn:hover {
+  background: #e5e7eb;
+}
+
+.code-block-wrapper pre {
+  margin: 0;
+  border-radius: 0;
+}

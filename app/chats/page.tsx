@@ -2282,6 +2282,29 @@ const escapeHtmlOutsideCode = (text: string): string => {
     .join("");
 };
 
+const aiRenderer = new marked.Renderer();
+
+aiRenderer.code = ({ text, lang }) => {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return (
+    `<div class="code-block-wrapper">` +
+    `<div class="code-block-header">` +
+    `<span class="code-lang">${lang || "code"}</span>` +
+    `<button class="copy-code-btn" onclick="
+      navigator.clipboard.writeText(this.closest('.code-block-wrapper').querySelector('code').innerText);
+      this.textContent = '✅ Copied';
+      setTimeout(() => this.textContent = '📋 Copy', 2000);
+    ">📋 Copy</button>` +
+    `</div>` +
+    `<pre><code class="language-${lang || ""}">${escaped}</code></pre>` +
+    `</div>`
+  );
+};
+
   const formatText = (text: string, sender: "user" | "ai" = "ai"): string => {
     const character = getCurrentCharacter();
     const replaced = text
@@ -2342,7 +2365,7 @@ const escapeHtmlOutsideCode = (text: string): string => {
       return typeof rawHtml === "string" ? rawHtml : escaped;
     }
 
-    const rawHtml = marked.parse(escaped);
+    const rawHtml = marked.parse(escaped, { renderer: aiRenderer });
     return typeof rawHtml === "string" ? rawHtml : escaped;
   };
 
