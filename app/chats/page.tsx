@@ -89,7 +89,7 @@ export default function AIChatRoom() {
   const [settingsTab, setSettingsTab] = useState<
     "api" | "user" | "prompt" | "other"
   >("user");
-  const [model, setModel] = useState<string>("deepseek/deepseek-v3.2");
+  const [model, setModel] = useState<string>("deepseek/deepseek-v4-flash");
   const [endpointUrl, setEndpointUrl] = useState<string>(
     "https://openrouter.ai/api/v1/chat/completions",
   );
@@ -1795,7 +1795,7 @@ export default function AIChatRoom() {
   // You can use this function to validate the API key when needed
 
   const resetApiSettings = () => {
-    setModel("deepseek/deepseek-v3.2");
+    setModel("deepseek/deepseek-v4-flash");
     setApiKey("");
     setValidated(false);
   };
@@ -3535,7 +3535,7 @@ export default function AIChatRoom() {
                             setModel(e.target.value);
                             setSelectedApiPresetId("");
                           }}
-                          placeholder="e.g. deepseek/deepseek-v3.2"
+                          placeholder="e.g. deepseek/deepseek-v4-flash"
                         />
                         <p className="text-xs text-gray-500 mt-2">
                           Choose which AI model to use for responses

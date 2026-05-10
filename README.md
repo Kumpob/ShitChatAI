@@ -73,6 +73,13 @@ All data (characters, chats, images, presets) is stored **locally in your browse
 * "Clear All Data" wipes everything and resets consent
 * Quota exceeded detection with user-friendly error
 
+### 📲 **Progressive Web App (PWA)**
+
+* Installable on any device — add to home screen on iOS, Android, or desktop
+* Runs in standalone mode (no browser chrome) once installed
+* Apple-specific meta tags for full iOS home screen support
+* Custom app icons at 192×192 and 512×512
+
 ### 🖥️ **Keyboard Shortcuts**
 
 | Key | Action |
@@ -100,7 +107,7 @@ All data (characters, chats, images, presets) is stored **locally in your browse
 
 ## 🔑 **Requirements**
 
-* Any modern browser (Chrome, Firefox, Edge, Safari)
+* Any modern browser (Chrome, Firefox, Edge, Safari) or install as a PWA for a native app-like experience
 * An API key from a supported provider:
   * [OpenRouter](https://openrouter.ai/keys) — access to 100s of models
   * [OpenAI](https://platform.openai.com/api-keys)
@@ -120,6 +127,7 @@ Your API key is stored locally and only sent to your configured endpoint.
 * **pdfjs-dist** — Client-side PDF text extraction
 * **mammoth** — Client-side DOCX text extraction
 * **OpenAI-compatible streaming API**
+* **Web App Manifest + PWA** — installable on any device
 * Client-side image processing (Canvas, WebP/JPEG compression)
 * `localStorage` for all persistence
 
