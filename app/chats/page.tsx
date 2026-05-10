@@ -39,12 +39,12 @@ export default function AIChatRoom() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
-  const [userName, setUserName] = useState<string>("You");
+  const [userName, setUserName] = useState<string>("User");
   const [userDescription, setUserDescription] = useState<string>("");
   const [userPronouns, setUserPronouns] = useState({
-    p1: "he",
-    p2: "his",
-    p3: "him",
+    p1: "they",
+    p2: "their",
+    p3: "them",
   });
   const [userThumbnail, setUserThumbnail] = useState<string>("");
   const [userFullImage, setUserFullImage] = useState<string>("");
@@ -58,13 +58,13 @@ export default function AIChatRoom() {
   // );
   // const [defaultPreset, setDefaultPreset] = useState<UserPreset>({
   //   id: "default",
-  //   name: "You",
+  //   name: "User",
   //   description: "",
   //   thumbnail: "",
   //   fullImage: "",
-  //   p1: "he",
-  //   p2: "his",
-  //   p3: "him",
+  //   p1: "they",
+  //   p2: "their",
+  //   p3: "them",
   // });
   // const [showPresetList, setShowPresetList] = useState(false);
 
@@ -1837,21 +1837,45 @@ export default function AIChatRoom() {
         systemMessage += `\n\nUser Pronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
       systemMessage = systemMessage
         .replace(/\{\{char\}\}/g, character.name)
+        .replace(/\{char\}/g, character.name)
         .replace(/\{\{user\}\}/g, userName)
+        .replace(/\{user\}/g, userName)
         .replace(/\{\{p1\}\}/g, userPronouns.p1)
+        .replace(/\{p1\}/g, userPronouns.p1)
+        .replace(/\{\{sub\}\}/g, userPronouns.p1)
+        .replace(/\{sub\}/g, userPronouns.p1)
         .replace(/\{\{p2\}\}/g, userPronouns.p2)
-        .replace(/\{\{p3\}\}/g, userPronouns.p3);
+        .replace(/\{p2\}/g, userPronouns.p2)
+        .replace(/\{\{poss\}\}/g, userPronouns.p2)
+        .replace(/\{poss\}/g, userPronouns.p2)
+        .replace(/\{\{p3\}\}/g, userPronouns.p3)
+        .replace(/\{p3\}/g, userPronouns.p3)
+        .replace(/\{\{obj\}\}/g, userPronouns.p3)
+        .replace(/\{obj\}/g, userPronouns.p3);
 
+      console.log("System Message:", systemMessage);
       const messagesWithNames = messages.map((m) => {
         const role = m.sender === "user" ? "user" : "assistant";
         let content = m.text;
         content = content.replace(/\{\{user\}\}/g, userName);
+        content = content.replace(/\{user\}/g, userName);
         content = content.replace(/\{\{char\}\}/g, character.name);
+        content = content.replace(/\{char\}/g, character.name);
         content = content.replace(/\{\{p1\}\}/g, userPronouns.p1);
+        content = content.replace(/\{p1\}/g, userPronouns.p1);
+        content = content.replace(/\{\{sub\}\}/g, userPronouns.p1);
+        content = content.replace(/\{sub\}/g, userPronouns.p1);
         content = content.replace(/\{\{p2\}\}/g, userPronouns.p2);
+        content = content.replace(/\{p2\}/g, userPronouns.p2);
+        content = content.replace(/\{\{poss\}\}/g, userPronouns.p2);
+        content = content.replace(/\{poss\}/g, userPronouns.p2);
         content = content.replace(/\{\{p3\}\}/g, userPronouns.p3);
+        content = content.replace(/\{p3\}/g, userPronouns.p3);
+        content = content.replace(/\{\{obj\}\}/g, userPronouns.p3);
+        content = content.replace(/\{obj\}/g, userPronouns.p3);
         return { role, content };
       });
+      console.log("Messages with names:", messagesWithNames);
       if (regen) {
         systemMessage += `\n\nRegenerate id differently.`;
       }
@@ -2238,20 +2262,47 @@ export default function AIChatRoom() {
 
     return { attachmentsHtml, userQuestion };
   };
+const escapeHtmlOutsideCode = (text: string): string => {
+  // Split on code blocks (```) and inline code (`)
+  // Odd indexes = code content, even indexes = regular text
+  const parts = text.split(/(```[\s\S]*?```|`[^`]*`)/g);
+
+  return parts
+    .map((part, i) => {
+      if (i % 2 === 1) {
+        // Code part — leave it alone, marked handles escaping inside
+        return part;
+      }
+      // Regular text — escape HTML tags
+      return part
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    })
+    .join("");
+};
 
   const formatText = (text: string, sender: "user" | "ai" = "ai"): string => {
     const character = getCurrentCharacter();
     const replaced = text
       .replace(/\{\{user\}\}/g, userName)
+      .replace(/\{user\}/g, userName)
       .replace(/\{\{char\}\}/g, character?.name || "AI")
+      .replace(/\{char\}/g, character?.name || "AI")
       .replace(/\{\{p1\}\}/g, userPronouns.p1)
+      .replace(/\{p1\}/g, userPronouns.p1)
+      .replace(/\{\{sub\}\}/g, userPronouns.p1)
+      .replace(/\{sub\}/g, userPronouns.p1)
       .replace(/\{\{p2\}\}/g, userPronouns.p2)
-      .replace(/\{\{p3\}\}/g, userPronouns.p3);
+      .replace(/\{p2\}/g, userPronouns.p2)
+      .replace(/\{\{poss\}\}/g, userPronouns.p2)
+      .replace(/\{poss\}/g, userPronouns.p2)
+      .replace(/\{\{p3\}\}/g, userPronouns.p3)
+      .replace(/\{p3\}/g, userPronouns.p3)
+      .replace(/\{\{obj\}\}/g, userPronouns.p3)
+      .replace(/\{obj\}/g, userPronouns.p3);
 
-    const escaped = replaced
-      .replace(/&/g, "&amp;") // must be first
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    const escaped = escapeHtmlOutsideCode(replaced);
 
     if (sender === "user") {
       const separator = "=".repeat(25);
@@ -2261,10 +2312,7 @@ export default function AIChatRoom() {
         const { attachmentsHtml, userQuestion } = formatUserMessage(replaced);
 
         // Only run marked on the actual question text
-        const escapedQuestion = userQuestion
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
+        const escapedQuestion = escapeHtmlOutsideCode(userQuestion);
         const noHeadings = escapedQuestion.replace(
           /^(#{1,6})\s/gm,
           (_, hashes) =>
@@ -2281,10 +2329,7 @@ export default function AIChatRoom() {
         );
       }
 
-      const escaped = replaced
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+      const escaped = escapeHtmlOutsideCode(replaced);
       const noHeadings = escaped.replace(
         /^(#{1,6})\s/gm,
         (_, hashes) =>
@@ -2378,8 +2423,8 @@ export default function AIChatRoom() {
   };
 
   const resetNames = () => {
-    setUserName("You");
-    setUserPronouns({ p1: "he", p2: "his", p3: "him" });
+    setUserName("User");
+    setUserPronouns({ p1: "they", p2: "their", p3: "them" });
   };
 
   const resetPromptSettings = () => {
@@ -3794,7 +3839,7 @@ export default function AIChatRoom() {
                         <div className="text-xs text-blue-500 mt-1 space-y-1">
                           <p>
                             {
-                              "• Available placeholders: {{char}}, {{user}}, {{p1}}, {{p2}}, {{p3}}"
+                              "• Available placeholders: {{char}}, {{user}}, {{p1}}, {{sub}}, {{p2}}, {{poss}}, {{p3}}, {{obj}}"
                             }
                           </p>
                           <p>
@@ -3804,7 +3849,12 @@ export default function AIChatRoom() {
                           </p>
                           <p>
                             {
-                              "• {{p1}} = Subject pronoun, {{p2}} = Possessive, {{p3}} = Object pronoun"
+                              "• {{p1}}, {{sub}} = Subject pronoun, {{p2}}, {{poss}} = Possessive, {{p3}}, {{obj}} = Object pronoun"
+                            }
+                          </p>
+                          <p>
+                            {
+                              "• Works with 1 or 2 curly braces — {{user}} and {user} both work"
                             }
                           </p>
                         </div>

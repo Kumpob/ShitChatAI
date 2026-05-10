@@ -165,21 +165,24 @@ export default function Help({
                   <p>Character's name</p>
                 </div>
                 <div className="bg-white p-3 rounded">
-                  <strong className="text-green-600">{`{{p1}}`}</strong>
+                  <strong className="text-green-600">{`{{p1}}, {{sub}}`}</strong>
                   <p>Your subject pronoun (he/she/they)</p>
                 </div>
                 <div className="bg-white p-3 rounded">
-                  <strong className="text-green-600">{`{{p2}}`}</strong>
+                  <strong className="text-green-600">{`{{p2}}, {{poss}}`}</strong>
                   <p>Your possessive pronoun (his/her/their)</p>
                 </div>
                 <div className="bg-white p-3 rounded">
-                  <strong className="text-green-600">{`{{p3}}`}</strong>
+                  <strong className="text-green-600">{`{{p3}}, {{obj}}`}</strong>
                   <p>Your object pronoun (him/her/them)</p>
                 </div>
               </div>
               <p className="text-xs text-green-600 mt-3">
                 💡 Placeholders work in personality, scenario, first messages,
                 and system prompts!
+              </p>
+              <p className="text-xs text-green-600">
+                💡 Works with 1 or 2 curly braces — {`{{user}} and {user}`} both work
               </p>
             </div>
 

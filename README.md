@@ -35,7 +35,7 @@ All data (characters, chats, images, presets) is stored **locally in your browse
 * Regenerate responses — multiple regenerations stored per message, switchable with ◀ ▶
 * Branch chat from any message to explore alternate paths
 * Temperature & max token controls
-* Custom system prompt with placeholder support (`{{char}}`, `{{user}}`, `{{p1}}`, `{{p2}}`, `{{p3}}`)
+* Custom system prompt with placeholder support (`{{char}}`, `{{user}}`, `{{p1}}`, `{{p2}}`, `{{p3}}`, `{{sub}}`, `{{poss}}`, `{{obj}}`)
 * Default assistance and roleplay system prompt presets
 
 ### 🧠 **Thinking / Reasoning Support**
