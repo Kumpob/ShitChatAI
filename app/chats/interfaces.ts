@@ -37,3 +37,11 @@ export interface UserPreset {
   p2: string;
   p3: string;
 }
+
+export interface ApiPreset {
+  id: string;
+  name: string;
+  model: string;
+  endpointUrl: string;
+  apiKey: string;
+}

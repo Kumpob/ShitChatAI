@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, JSX } from "react";
 import { marked } from "marked";
 import CustomToast from "./CustomToast";
-import { Chat, Character, Message, UserPreset } from "./interfaces";
+import { Chat, Character, Message, UserPreset, ApiPreset } from "./interfaces";
 import Help from "./HelpModal";
 import StoryContentModal from "./StoryContentModal";
 import ConfirmModal from "./ConfirmModal";
@@ -21,6 +21,18 @@ import {
   estimateBase64Size,
 } from "./imageUtils";
 import { extractTextFromFiles } from "./extractTextFromFiles";
+import { importCharacterCardFromPNGFunc } from "./importCharacterCardFromPNG";
+import { importCharacterCardFunc } from "./importCharacterCard";
+import { validateApiKey } from "./validateApiKey";
+import { handleAPIRequestFunc } from "./handleAPIRequest";
+import { regenerateResponseFunc } from "./regenerateResponse";
+import { deleteChatFunc } from "./deleteChat";
+import { saveEditFunc } from "./saveEdit";
+import { deleteCharacterFunc } from "./deleteCharacter";
+import { Sidebar } from "./Sidebar";
+import { NewCharacterModal } from "./NewCharacterModal";
+import { BotSettingsModal } from "./BotSettingsModal";
+import { SettingsModal } from "./SettingsModal";
 
 export default function AIChatRoom() {
   // State management
@@ -95,15 +107,7 @@ export default function AIChatRoom() {
   );
   const [apiKey, setApiKey] = useState<string>("");
 
-  const [apiPresets, setApiPresets] = useState<
-    {
-      id: string;
-      name: string;
-      model: string;
-      endpointUrl: string;
-      apiKey: string;
-    }[]
-  >([]);
+  const [apiPresets, setApiPresets] = useState<ApiPreset[]>([]);
   const [selectedApiPresetId, setSelectedApiPresetId] = useState<string>("");
   const [editingApiPresetId, setEditingApiPresetId] = useState<string | null>(
     null,
@@ -136,7 +140,8 @@ export default function AIChatRoom() {
 
   const [usejpg, setUsejpg] = useState<boolean>(false);
 
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isIPad = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)|| isIPad;
 
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt = defaultpromptx;
@@ -580,52 +585,21 @@ export default function AIChatRoom() {
     setEditWidth(width);
   };
 
-  const saveEdit = () => {
-    if (editingIndex !== null) {
-      const updatedMessages = [...messages];
-      updatedMessages[editingIndex].text = editText;
-
-      // Update regenText in the message itself
-      const currentMsg = updatedMessages[editingIndex];
-      if (
-        currentMsg.sender === "ai" &&
-        currentMsg.regeneratedResponses &&
-        currentMsg.currentResponseIndex !== undefined &&
-        currentMsg.regeneratedResponses.length > currentMsg.currentResponseIndex
-      ) {
-        const updatedRegen = [...currentMsg.regeneratedResponses];
-        updatedRegen[currentMsg.currentResponseIndex] = editText;
-        updatedMessages[editingIndex].regeneratedResponses = updatedRegen;
-      }
-
-      setMessages(updatedMessages);
-
-      // Update characters state
-      if (selectedCharacterId && selectedChatId) {
-        const updatedCharacters = characters.map((character) =>
-          character.id === selectedCharacterId
-            ? {
-                ...character,
-                chats: character.chats.map((chat) =>
-                  chat.id === selectedChatId
-                    ? {
-                        ...chat,
-                        messages: updatedMessages,
-                        lastActive: Date.now(),
-                      }
-                    : chat,
-                ),
-              }
-            : character,
-        );
-        setCharacters(updatedCharacters);
-      }
-
-      setEditingIndex(null);
-      setEditText("");
-      setToastMessage("Message edited successfully!");
-      setValidcolor("bg-green-400/50");
-    }
+  const saveEdit = (): void => {
+    return saveEditFunc({
+      editingIndex,
+      editText,
+      messages,
+      characters,
+      selectedCharacterId,
+      selectedChatId,
+      setMessages,
+      setCharacters,
+      setEditingIndex,
+      setEditText,
+      setToastMessage,
+      setValidcolor,
+    });
   };
 
   const handleUserImageUpload = async (): Promise<void> => {
@@ -838,210 +812,6 @@ export default function AIChatRoom() {
     document.body.appendChild(modal);
   };
 
-  const importCharacterCardFromPNG = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ): void => {
-    const file = event.target.files?.[0];
-    if (!file || !file.type.includes("png")) return;
-
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      try {
-        const arrayBuffer = e.target?.result as ArrayBuffer;
-        if (!arrayBuffer) return;
-
-        // Extract metadata from PNG
-        const textDecoder = new TextDecoder("utf-8");
-        const latin1Decoder = new TextDecoder("latin1"); // For text content
-        const dataView = new DataView(arrayBuffer);
-
-        // PNG signature check (first 8 bytes)
-        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
-        for (let i = 0; i < 8; i++) {
-          if (dataView.getUint8(i) !== pngSignature[i]) {
-            throw new Error("Not a valid PNG file");
-          }
-        }
-
-        // Look for tEXt chunks that contain character data
-        let offset = 8;
-        let characterData: any = null;
-
-        while (offset < dataView.byteLength) {
-          const length = dataView.getUint32(offset);
-          offset += 4;
-
-          const chunkType = textDecoder.decode(
-            new Uint8Array(arrayBuffer, offset, 4),
-          );
-          offset += 4;
-
-          if (chunkType === "tEXt") {
-            const keywordData = new Uint8Array(arrayBuffer, offset, 80); // Read first 80 bytes for keyword
-            let keywordEnd = 0;
-            while (
-              keywordEnd < keywordData.length &&
-              keywordData[keywordEnd] !== 0
-            ) {
-              keywordEnd++;
-            }
-
-            const keyword = textDecoder.decode(
-              keywordData.slice(0, keywordEnd),
-            );
-
-            if (
-              keyword === "chara" ||
-              keyword === "character" ||
-              keyword === "prompt"
-            ) {
-              const dataStart = offset + keywordEnd + 1; // +1 for null separator
-              const textData = new Uint8Array(
-                arrayBuffer,
-                dataStart,
-                length - keywordEnd - 1,
-              );
-              const textContent = latin1Decoder.decode(textData); // Use Latin1 for text content
-
-              try {
-                // First try to decode as base64
-                const decoded = atob(textContent);
-                // Convert the base64-decoded string to proper UTF-8
-                const utf8Bytes = new Uint8Array(decoded.length);
-                for (let i = 0; i < decoded.length; i++) {
-                  utf8Bytes[i] = decoded.charCodeAt(i);
-                }
-                const utf8Decoder = new TextDecoder("utf-8");
-                const utf8String = utf8Decoder.decode(utf8Bytes);
-                characterData = JSON.parse(utf8String);
-                break;
-              } catch (base64Error) {
-                // If base64 fails, try parsing directly
-                try {
-                  characterData = JSON.parse(textContent);
-                  break;
-                } catch (parseError) {
-                  console.log("Could not parse character data:", parseError);
-                }
-              }
-            }
-          }
-
-          offset += length + 4; // Skip data and CRC
-        }
-
-        if (characterData) {
-          // Extract data with fallbacks (different formats)
-          console.log("Character data:", characterData);
-          const name =
-            characterData.name ||
-            characterData.data?.name ||
-            "Imported Character";
-          const firstMessage =
-            characterData.first_mes ||
-            characterData.firstMessage ||
-            characterData.data?.first_mes ||
-            "";
-          const scenario =
-            characterData.scenario || characterData.data?.scenario || "";
-
-          // Combine description and personality
-          const description =
-            characterData.description || characterData.data?.description || "";
-          const personality =
-            characterData.personality || characterData.data?.personality || "";
-
-          let combinedPersonality = "";
-          let storyContent = "";
-
-          // Check for HTML content in personality
-          if (
-            personality.trim().startsWith("<") ||
-            personality.includes("<p") ||
-            personality.includes("<div")
-          ) {
-            storyContent = personality;
-            // If personality is just HTML, leave combinedPersonality empty (or just description)
-            combinedPersonality = description;
-          } else {
-            combinedPersonality = [description, personality]
-              .filter((text) => text.trim())
-              .join("\n\n")
-              .trim();
-          }
-
-          // Fill the form fields with imported data
-          setNewCharacterName(name);
-          setNewCharacterAlias("");
-          setNewCharacterFirstMessage(firstMessage);
-          setNewCharacterScenario(scenario);
-          setNewCharacterPersonality(combinedPersonality);
-          setNewCharacterStoryContent(storyContent);
-
-          // Also extract the image itself for use as character image
-          const img = new Image();
-          img.onload = () => {
-            // Create a canvas to process the image
-            const canvas = document.createElement("canvas");
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext("2d");
-
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-
-              // Create both thumbnail and full image versions
-              Promise.all([
-                processImage(file, 5, 200), // Thumbnail
-                processImage(file, 75, 1200), // Full image
-              ]).then(([thumbnail, fullImage]) => {
-                setTempCharacterImage({ thumbnail, fullImage });
-              });
-            }
-          };
-          img.src = URL.createObjectURL(file);
-
-          setToastMessage("Character data extracted from PNG!");
-        } else {
-          // No character data found, just use the image
-          const img = new Image();
-          img.onload = () => {
-            // Create a canvas to process the image
-            const canvas = document.createElement("canvas");
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext("2d");
-
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-
-              // Create both thumbnail and full image versions
-              Promise.all([
-                processImage(file, 5, 200), // Thumbnail
-                processImage(file, 75, 1200), // Full image
-              ]).then(([thumbnail, fullImage]) => {
-                setTempCharacterImage({ thumbnail, fullImage });
-              });
-            }
-          };
-          img.src = URL.createObjectURL(file);
-
-          setToastMessage("PNG imported as image (no character data found)");
-        }
-      } catch (error) {
-        console.error("Error processing PNG file:", error);
-        setToastMessage("Error processing PNG file");
-      }
-    };
-
-    reader.onerror = () => {
-      setToastMessage("Error reading file");
-    };
-
-    reader.readAsArrayBuffer(file);
-  };
-
   const cancelEdit = () => {
     setEditingIndex(null);
     setEditText("");
@@ -1104,8 +874,9 @@ export default function AIChatRoom() {
     }
   };
 
-  // Close modals with ESC key
+  // Handle Shortcuts
   useEffect(() => {
+    // Close modals with ESC key
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (showSettings) setShowSettings(false);
@@ -1477,6 +1248,7 @@ export default function AIChatRoom() {
     openCopyDropdown,
   ]);
 
+  // Close copy dropdown when clicking outside
   useEffect(() => {
     if (openCopyDropdown === null) return;
     const handleClickOutside = () => setOpenCopyDropdown(null);
@@ -1493,128 +1265,32 @@ export default function AIChatRoom() {
     }
   }, [input]);
 
-  const deleteCharacter = (characterId: string) => {
-    if (characters.length <= 1) {
-      alert(
-        "You cannot delete the last character. At least one character must remain.",
-      );
-      setShowDeleteCharacterModal(false);
-      setCharacterToDelete(null);
-      return;
-    }
-
-    const updatedCharacters = characters.filter(
-      (character) => character.id !== characterId,
-    );
-    setCharacters(updatedCharacters);
-
-    // If we deleted the current character, select the first available character
-    if (selectedCharacterId === characterId) {
-      if (updatedCharacters.length > 0) {
-        setSelectedCharacterId(updatedCharacters[0].id);
-        if (updatedCharacters[0].chats.length > 0) {
-          setSelectedChatId(updatedCharacters[0].chats[0].id);
-          setMessages(updatedCharacters[0].chats[0].messages);
-        } else {
-          setSelectedChatId(null);
-          setMessages([]);
-        }
-      } else {
-        // Create a default character if all are deleted
-        const defaultCharacter: Character = {
-          id: "default",
-          name: "AI",
-          personality: "",
-          scenario: "",
-          chats: [
-            {
-              id: "default-chat",
-              title: "First Chat",
-              messages: [
-                {
-                  sender: "ai",
-                  text: "Hello {{user}}! I'm {{char}}, how can I help you today?",
-                },
-              ],
-              lastActive: Date.now(),
-            },
-          ],
-        };
-        setCharacters([defaultCharacter]);
-        setSelectedCharacterId("default");
-        setSelectedChatId("default-chat");
-        setMessages(defaultCharacter.chats[0].messages);
-      }
-    }
-
-    setShowDeleteCharacterModal(false);
-    setCharacterToDelete(null);
+  const deleteCharacter = (characterId: string): void => {
+    return deleteCharacterFunc(characterId, {
+      characters,
+      selectedCharacterId,
+      setCharacters,
+      setSelectedCharacterId,
+      setSelectedChatId,
+      setMessages,
+      setShowDeleteCharacterModal,
+      setCharacterToDelete,
+    });
   };
 
-  const importCharacterCard = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.type === "application/json" || file.name.endsWith(".json")) {
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        try {
-          const fileContent = e.target?.result as string;
-          const cardData = JSON.parse(fileContent);
-          const characterData = cardData.data || cardData;
-
-          // Extract data with fallbacks
-          const name = characterData.name || "Imported Character";
-          const firstMessage =
-            characterData.first_mes || characterData.firstMessage || "";
-          const scenario = characterData.scenario || "";
-
-          // Combine description and personality (different sites use different fields)
-          const description = characterData.description || "";
-          const personality = characterData.personality || "";
-          let storyContent = "";
-          if (personality.trim().startsWith("<p>")) {
-            storyContent = personality;
-          } else {
-            storyContent = "";
-          }
-          const combinedPersonality = [description, personality]
-            .filter((text) => text.trim())
-            .join("\n\n")
-            .trim();
-
-          // Fill the form fields with imported data
-          setNewCharacterName(name);
-          setNewCharacterAlias("");
-          setNewCharacterFirstMessage(firstMessage);
-          setNewCharacterScenario(scenario);
-          setNewCharacterPersonality(combinedPersonality);
-          setNewCharacterStoryContent(storyContent);
-
-          // Reset file input
-          event.target.value = "";
-        } catch (error) {
-          alert(
-            "Invalid JSON file. Please select a valid character card JSON file.",
-          );
-          console.error("Import error:", error);
-          event.target.value = "";
-        }
-      };
-
-      reader.onerror = () => {
-        alert("Error reading file. Please try again.");
-        event.target.value = "";
-      };
-
-      reader.readAsText(file);
-    } else if (file.type.includes("image") || file.name.endsWith(".png")) {
-      // Handle PNG files
-      importCharacterCardFromPNG(event);
-    } else {
-      setToastMessage("Unsupported file format");
-    }
+  const importCharacterCard = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    return importCharacterCardFunc(event, {
+      setNewCharacterName,
+      setNewCharacterAlias,
+      setNewCharacterFirstMessage,
+      setNewCharacterScenario,
+      setNewCharacterPersonality,
+      setNewCharacterStoryContent,
+      setTempCharacterImage,
+      setToastMessage,
+    });
   };
 
   // Character and chat management
@@ -1739,50 +1415,6 @@ export default function AIChatRoom() {
     }
   };
 
-  const validateApiKey = async (
-    apiKey: string,
-    endpointUrl: string,
-    model: string,
-  ): Promise<boolean> => {
-    try {
-      const response = await fetch(endpointUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: "Say 'ok' if this API key works.",
-            },
-          ],
-          max_tokens: 5,
-          thinking: { type: "disabled" },
-          reasoning: { enabled: false },
-        }),
-      });
-
-      if (response.status !== 200) {
-        console.log("API key validation failed");
-        return false;
-      }
-
-      const data = await response.json();
-      console.log("API validation response:", data.choices?.[0]?.message);
-      // Basic sanity check: did we actually get a model response?
-      return (
-        !!data?.choices?.[0]?.message?.content ||
-        !!data?.choices?.[0]?.message?.reasoning_content ||
-        !!data?.choices?.[0]?.message?.reasoning
-      );
-    } catch (error) {
-      return false;
-    }
-  };
-
   const validateApibutton = async () => {
     setValidating(true);
     const isValid = await validateApiKey(apiKey, endpointUrl, model);
@@ -1817,407 +1449,73 @@ export default function AIChatRoom() {
     regen: boolean;
     targetMessageIndex?: number;
   }) => {
-    let aiResponse = "";
-    let aiThinking = "";
-    try {
-      let systemMessage = systemPrompt;
-      systemMessage += `\n\nCharacter Name: ${character.name}`;
-      if (character.personality.trim())
-        systemMessage += `\n\nCharacter Personality: ${character.personality}`;
-      if (character.scenario.trim())
-        systemMessage += `\n\nScenario: ${character.scenario}`;
-      systemMessage += `\n\nUser Name: ${userName}`;
-      if (userDescription.trim())
-        systemMessage += `\n\nUser Description: ${userDescription}`;
-      if (
-        userPronouns.p1.trim() ||
-        userPronouns.p2.trim() ||
-        userPronouns.p3.trim()
-      )
-        systemMessage += `\n\nUser Pronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
-      systemMessage = systemMessage
-        .replace(/\{\{char\}\}/g, character.name)
-        .replace(/\{char\}/g, character.name)
-        .replace(/\{\{user\}\}/g, userName)
-        .replace(/\{user\}/g, userName)
-        .replace(/\{\{p1\}\}/g, userPronouns.p1)
-        .replace(/\{p1\}/g, userPronouns.p1)
-        .replace(/\{\{sub\}\}/g, userPronouns.p1)
-        .replace(/\{sub\}/g, userPronouns.p1)
-        .replace(/\{\{p2\}\}/g, userPronouns.p2)
-        .replace(/\{p2\}/g, userPronouns.p2)
-        .replace(/\{\{poss\}\}/g, userPronouns.p2)
-        .replace(/\{poss\}/g, userPronouns.p2)
-        .replace(/\{\{p3\}\}/g, userPronouns.p3)
-        .replace(/\{p3\}/g, userPronouns.p3)
-        .replace(/\{\{obj\}\}/g, userPronouns.p3)
-        .replace(/\{obj\}/g, userPronouns.p3);
-
-      console.log("System Message:", systemMessage);
-      const messagesWithNames = messages.map((m) => {
-        const role = m.sender === "user" ? "user" : "assistant";
-        let content = m.text;
-        content = content.replace(/\{\{user\}\}/g, userName);
-        content = content.replace(/\{user\}/g, userName);
-        content = content.replace(/\{\{char\}\}/g, character.name);
-        content = content.replace(/\{char\}/g, character.name);
-        content = content.replace(/\{\{p1\}\}/g, userPronouns.p1);
-        content = content.replace(/\{p1\}/g, userPronouns.p1);
-        content = content.replace(/\{\{sub\}\}/g, userPronouns.p1);
-        content = content.replace(/\{sub\}/g, userPronouns.p1);
-        content = content.replace(/\{\{p2\}\}/g, userPronouns.p2);
-        content = content.replace(/\{p2\}/g, userPronouns.p2);
-        content = content.replace(/\{\{poss\}\}/g, userPronouns.p2);
-        content = content.replace(/\{poss\}/g, userPronouns.p2);
-        content = content.replace(/\{\{p3\}\}/g, userPronouns.p3);
-        content = content.replace(/\{p3\}/g, userPronouns.p3);
-        content = content.replace(/\{\{obj\}\}/g, userPronouns.p3);
-        content = content.replace(/\{obj\}/g, userPronouns.p3);
-        return { role, content };
-      });
-      console.log("Messages with names:", messagesWithNames);
-      if (regen) {
-        systemMessage += `\n\nRegenerate id differently.`;
-      }
-      const requestBody: any = {
-        model: model,
-        messages: [
-          { role: "system", content: systemMessage },
-          ...messagesWithNames,
-        ],
-        temperature: temperature,
-        //deepseek
-        thinking: { type: showThinking ? "enabled" : "disabled" },
-        //openrouter
-        reasoning: { enabled: showThinking ? true : false },
-        stream: true,
-      };
-      if (showThinking) {
-        requestBody.reasoning_effort = thinkingEffort;
-        requestBody.reasoning = { enabled: true, effort: thinkingEffort };
-      }
-      // Only include max_tokens if it's not 0 (use model default)
-      if (maxTokens !== 0) {
-        requestBody.max_tokens = maxTokens;
-      }
-      // Cancel any existing request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      const response = await fetch(endpointUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-          "HTTP-Referer": "https://shit-chat-ai.vercel.app/",
-          "X-Title": "Shit Chat AI",
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Full error response:", errorText);
-        throw new Error(
-          `HTTP error! status: ${response.status}, details: ${errorText}`,
-        );
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No reader available");
-
-      const decoder = new TextDecoder();
-
-      // Prepare the message placeholder
-      setMessages((prev) => {
-        const updated = [...prev];
-
-        if (
-          targetMessageIndex !== undefined &&
-          targetMessageIndex >= 0 &&
-          targetMessageIndex < updated.length
-        ) {
-          // We are appending to an existing message (regenerating)
-          // IMMUTABLE UPDATE: Copy the message and the array
-          const targetMsg = { ...updated[targetMessageIndex] };
-          const currentResponses = targetMsg.regeneratedResponses
-            ? [...targetMsg.regeneratedResponses]
-            : targetMsg.text
-              ? [targetMsg.text]
-              : [];
-          const currentThinking = targetMsg.regeneratedThinking
-            ? [...targetMsg.regeneratedThinking]
-            : [""];
-
-          // Add a placeholder for the new response
-          currentResponses.push("...");
-          currentThinking.push("");
-
-          targetMsg.regeneratedResponses = currentResponses;
-          targetMsg.regeneratedThinking = currentThinking;
-          targetMsg.currentResponseIndex = currentResponses.length - 1;
-          targetMsg.text = "..."; // Show loading...
-          targetMsg.thinking = "";
-
-          updated[targetMessageIndex] = targetMsg;
-          return updated;
-        } else if (regen || updated.length === messages.length) {
-          // New message (either regen new or normal send)
-          // If normal send, targetMessageIndex is undefined. We append.
-
-          return [
-            ...updated,
-            {
-              sender: "ai" as const,
-              text: "...",
-              regeneratedResponses: ["..."],
-              regeneratedThinking: [""],
-              currentResponseIndex: 0,
-            },
-          ];
-        }
-        return updated;
-      });
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.trim() === "" || line.trim() === "data: [DONE]") continue;
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              const delta = data.choices[0]?.delta;
-              console.log("delta:", delta); // <-- add this temporarily
-
-              const content = delta?.content;
-              // Most likely fix — add reasoning to the chain:
-              const thinking =
-                delta?.reasoning_content ??
-                delta?.reasoning ??
-                delta?.thinking ??
-                null;
-
-              if (thinking) {
-                aiThinking += thinking;
-              }
-              if (content || thinking) {
-                if (content) aiResponse += content;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const targetIdx = targetMessageIndex ?? updated.length - 1;
-
-                  if (targetIdx >= 0 && targetIdx < updated.length) {
-                    const msg = { ...updated[targetIdx] };
-                    if (content) msg.text = aiResponse;
-                    msg.thinking = aiThinking;
-
-                    if (
-                      msg.regeneratedResponses &&
-                      msg.currentResponseIndex !== undefined
-                    ) {
-                      const newRegen = [...msg.regeneratedResponses];
-                      newRegen[msg.currentResponseIndex] = aiResponse;
-                      msg.regeneratedResponses = newRegen;
-                    } else {
-                      msg.regeneratedResponses = [aiResponse];
-                      msg.currentResponseIndex = 0;
-                    }
-                    if (msg.currentResponseIndex !== undefined) {
-                      const newRegenThinking = msg.regeneratedThinking
-                        ? [...msg.regeneratedThinking]
-                        : Array(msg.regeneratedResponses!.length).fill("");
-                      // if showThinking is off, store "" so indexes stay aligned
-                      newRegenThinking[msg.currentResponseIndex] = showThinking
-                        ? aiThinking
-                        : "";
-                      msg.regeneratedThinking = newRegenThinking;
-                    }
-
-                    updated[targetIdx] = msg;
-                  }
-
-                  return updated;
-                });
-                // Update characters state
-              }
-            } catch (e) {
-              console.error("Error parsing JSON:", e, line);
-            }
-          }
-        }
-      }
-      setMessages((prev) => {
-        if (selectedCharacterId && selectedChatId) {
-          setCharacters((prevChars) =>
-            prevChars.map((c) =>
-              c.id === selectedCharacterId
-                ? {
-                    ...c,
-                    chats: c.chats.map((chat) =>
-                      chat.id === selectedChatId
-                        ? { ...chat, messages: prev, lastActive: Date.now() }
-                        : chat,
-                    ),
-                  }
-                : c,
-            ),
-          );
-        }
-        return prev; // don't change messages, just read them
-      });
-      console.log("Full AI response:", aiResponse);
-      console.log("Full AI thinking:", aiThinking);
-    } catch (error) {
-      if ((error as any).name === "AbortError") {
-        setMessages((prev) => {
-          const updated = [...prev];
-          const idx = targetMessageIndex ?? updated.length - 1;
-          if (updated[idx]) {
-            const msg = { ...updated[idx] };
-            // No response was produced — set response to "" but keep thinking
-            if (aiResponse === "") {
-              msg.text = "";
-              if (
-                msg.regeneratedResponses &&
-                msg.currentResponseIndex !== undefined
-              ) {
-                const newRegen = [...msg.regeneratedResponses];
-                newRegen[msg.currentResponseIndex] = "";
-                msg.regeneratedResponses = newRegen;
-              }
-            }
-            // regeneratedThinking already has whatever was streamed — leave it
-            updated[idx] = msg;
-          }
-          return updated;
-        });
-        return;
-      }
-      console.error("Error:", error);
-      setMessages((prev) => {
-        const updated = [...prev];
-        const idx =
-          targetMessageIndex !== undefined
-            ? targetMessageIndex
-            : updated.length - 1;
-        if (updated[idx]) {
-          updated[idx].text = "(Error fetching response)";
-        }
-        return updated;
-      });
-    } finally {
-      setIsLoading(false);
-      isLoadingRef.current = false;
-      abortControllerRef.current = null;
-    }
-  };
-
-  const regenerateResponse = async (fromIndex: number) => {
-    if (fromIndex < 0 || fromIndex >= messages.length || isLoadingRef.current)
-      return;
-
-    setIsLoading(true);
-    isLoadingRef.current = true;
-    setIsLoading(true);
-    isLoadingRef.current = true;
-    // setShowRegenerate(false); // Deleted
-    // setRegenerateFromIndex(null); // Deleted
-
-    const character = getCurrentCharacter();
-    if (!character) return;
-
-    const messagesToRegenerate = messages.slice(0, fromIndex + 1);
-
-    // Check if we are regenerating an existing message or creating a new one
-    // The "response" message is usually at fromIndex + 1
-    let targetMessageIndex: number | undefined = undefined;
-    if (
-      fromIndex + 1 < messages.length &&
-      messages[fromIndex + 1].sender === "ai"
-    ) {
-      targetMessageIndex = fromIndex + 1;
-    }
-
-    try {
-      await handleAPIRequest({
+    return handleAPIRequestFunc(
+      {
         character,
-        messages: messagesToRegenerate,
+        messages,
         userName,
         userPronouns,
         userDescription,
-        regen: true,
-        targetMessageIndex: targetMessageIndex,
-      });
-    } catch (error) {
-      console.error("Error:", error);
-      setMessages((prev) => {
-        const updated = [
-          ...prev.slice(0, -1),
-          { sender: "ai" as const, text: "(Error fetching response)" },
-        ];
-        return updated;
-      });
-    } finally {
-      setIsLoading(false);
-      isLoadingRef.current = false;
-    }
+        regen,
+        targetMessageIndex,
+      },
+      {
+        systemPrompt,
+        model,
+        temperature,
+        showThinking,
+        thinkingEffort,
+        maxTokens,
+        endpointUrl,
+        apiKey,
+        selectedCharacterId,
+        selectedChatId,
+        abortControllerRef,
+        isLoadingRef,
+        setMessages,
+        setCharacters,
+        setIsLoading,
+      },
+    );
   };
 
-  const deleteChat = (characterId: string, chatId: string) => {
-    const updatedCharacters = characters.map((character) =>
-      character.id === characterId
-        ? {
-            ...character,
-            chats: character.chats.filter((chat) => chat.id !== chatId),
-          }
-        : character,
-    );
+  const regenerateResponse = async (fromIndex: number): Promise<void> => {
+    return regenerateResponseFunc(fromIndex, {
+      // APIRequestContext fields
+      systemPrompt,
+      model,
+      temperature,
+      showThinking,
+      thinkingEffort,
+      maxTokens,
+      endpointUrl,
+      apiKey,
+      selectedCharacterId,
+      selectedChatId,
+      abortControllerRef,
+      isLoadingRef,
+      setMessages,
+      setCharacters,
+      setIsLoading,
+      // RegenerateContext extras
+      messages,
+      userName,
+      userPronouns,
+      userDescription,
+      getCurrentCharacter,
+    });
+  };
 
-    setCharacters(updatedCharacters);
-
-    // If we deleted the current chat, select the first available chat
-    if (selectedCharacterId === characterId && selectedChatId === chatId) {
-      const character = updatedCharacters.find((c) => c.id === characterId);
-      if (character && character.chats.length > 0) {
-        setSelectedChatId(character.chats[0].id);
-        setMessages(character.chats[0].messages);
-      } else if (character && character.chats.length === 0) {
-        // Create a new chat if all chats were deleted
-        const firstMessage =
-          character.firstMessage ||
-          `Hello! I'm ${character.name}, how can I help you today?`;
-
-        const newChat: Chat = {
-          id: Date.now().toString(),
-          title: "New Chat",
-          messages: [
-            {
-              sender: "ai",
-              text: firstMessage,
-            },
-          ],
-          lastActive: Date.now(),
-        };
-
-        const finalCharacters = updatedCharacters.map((c) =>
-          c.id === characterId ? { ...c, chats: [newChat] } : c,
-        );
-
-        setCharacters(finalCharacters);
-        setSelectedChatId(newChat.id);
-        setMessages(newChat.messages);
-      }
-    }
-    setShowDeleteChatModal(false);
+  const deleteChat = (characterId: string, chatId: string): void => {
+    return deleteChatFunc(characterId, chatId, {
+      characters,
+      selectedCharacterId,
+      selectedChatId,
+      setCharacters,
+      setSelectedChatId,
+      setMessages,
+      setShowDeleteChatModal,
+    });
   };
 
   const formatUserMessage = (
@@ -2262,48 +1560,48 @@ export default function AIChatRoom() {
 
     return { attachmentsHtml, userQuestion };
   };
-const escapeHtmlOutsideCode = (text: string): string => {
-  // Split on code blocks (```) and inline code (`)
-  // Odd indexes = code content, even indexes = regular text
-  const parts = text.split(/(```[\s\S]*?```|`[^`]*`)/g);
+  const escapeHtmlOutsideCode = (text: string): string => {
+    // Split on code blocks (```) and inline code (`)
+    // Odd indexes = code content, even indexes = regular text
+    const parts = text.split(/(```[\s\S]*?```|`[^`]*`)/g);
 
-  return parts
-    .map((part, i) => {
-      if (i % 2 === 1) {
-        // Code part — leave it alone, marked handles escaping inside
-        return part;
-      }
-      // Regular text — escape HTML tags
-      return part
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    })
-    .join("");
-};
+    return parts
+      .map((part, i) => {
+        if (i % 2 === 1) {
+          // Code part — leave it alone, marked handles escaping inside
+          return part;
+        }
+        // Regular text — escape HTML tags
+        return part
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      })
+      .join("");
+  };
 
-const aiRenderer = new marked.Renderer();
+  const aiRenderer = new marked.Renderer();
 
-aiRenderer.code = ({ text, lang }) => {
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  aiRenderer.code = ({ text, lang }) => {
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
 
-  return (
-    `<div class="code-block-wrapper">` +
-    `<div class="code-block-header">` +
-    `<span class="code-lang">${lang || "code"}</span>` +
-    `<button class="copy-code-btn" onclick="
+    return (
+      `<div class="code-block-wrapper">` +
+      `<div class="code-block-header">` +
+      `<span class="code-lang">${lang || "code"}</span>` +
+      `<button class="copy-code-btn" onclick="
       navigator.clipboard.writeText(this.closest('.code-block-wrapper').querySelector('code').innerText);
       this.textContent = '✅ Copied';
       setTimeout(() => this.textContent = '📋 Copy', 2000);
     ">📋 Copy</button>` +
-    `</div>` +
-    `<pre><code class="language-${lang || ""}">${escaped}</code></pre>` +
-    `</div>`
-  );
-};
+      `</div>` +
+      `<pre><code class="language-${lang || ""}">${escaped}</code></pre>` +
+      `</div>`
+    );
+  };
 
   const formatText = (text: string, sender: "user" | "ai" = "ai"): string => {
     const character = getCurrentCharacter();
@@ -2666,206 +1964,33 @@ aiRenderer.code = ({ text, lang }) => {
         />
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`max-md:fixed max-md:top-0 max-md:left-0 max-md:h-full max-md:z-50 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${
-          isSidebarOpen
-            ? "translate-x-0 w-64 md:w-64"
-            : "-translate-x-full w-64 md:w-0 overflow-hidden"
-        }`}
-      >
-        <div className="flex flex-row p-4 border-b border-gray-200">
-          <Link
-            className="w-1/8 bg-blue-500 hover:bg-blue-600 text-white mr-2 py-2 px-2 rounded-lg flex items-center justify-center gap-2"
-            href="/"
-          >
-            <div className="font-bold">⇦</div>
-          </Link>
-          <button
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2"
-            onClick={() => setShowNewCharacterModal(true)}
-          >
-            ➕ New Character
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          {characters.map((character) => (
-            <div key={character.id} className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                {/* Character thumbnail */}
-                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {character.thumbnail ? (
-                    <img
-                      src={character.thumbnail}
-                      alt={character.name}
-                      className="w-full h-full object-cover"
-                      onClick={() => showFullImage(character.id)}
-                    />
-                  ) : (
-                    <span className="text-gray-500 text-xs">📷</span>
-                  )}
-                </div>
-
-                <h3
-                  className="font-semibold text-gray-800 truncate cursor-pointer hover:underline hover:text-blue-600 transition-colors flex-1"
-                  onClick={() => handleStoryInfoClick(character.id)}
-                  title={
-                    character.alias
-                      ? `${character.name} (${character.alias}) - Click for Story Info`
-                      : `${character.name} - Click for Story Info`
-                  }
-                >
-                  {character.alias && <>{character.alias} (</>}
-                  {character.name}
-                  {character.alias && <>)</>}
-                </h3>
-                <div className="flex gap-1">
-                  <button
-                    className="text-blue-500 hover:text-blue-700 text-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleBotSettingsClick(character.id);
-                    }}
-                    title="Bot settings"
-                  >
-                    ⚙️
-                  </button>
-                  <button
-                    className="text-blue-500 hover:text-blue-700 text-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      createNewChat(character.id);
-                      setToastMessage("New chat created");
-                      setValidcolor("bg-green-400/50");
-                    }}
-                    title="New chat"
-                  >
-                    ➕
-                  </button>
-                  <button
-                    className="text-red-500 hover:text-red-700 text-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCharacterToDelete(character.id);
-                      setShowDeleteCharacterModal(true);
-                    }}
-                    title="Delete character"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1 ml-2">
-                {character.chats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className="text-black grid grid-cols-[1fr_auto] items-center group chat-item"
-                  >
-                    {editingChatId === chat.id ? (
-                      <div className="col-span-2 flex items-center gap-1 bg-white rounded border border-gray-300 p-1">
-                        <input
-                          className="flex-1 min-w-0 border-none outline-none text-sm bg-transparent"
-                          value={editChatName}
-                          onChange={(e) => setEditChatName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveChatName();
-                            if (e.key === "Escape") cancelEditChatName();
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex-shrink-0 flex gap-1">
-                          <button
-                            className="text-green-500 hover:text-green-700 p-1"
-                            onClick={saveChatName}
-                            title="Save"
-                            disabled={!editChatName.trim()}
-                          >
-                            ✅
-                          </button>
-                          <button
-                            className="text-gray-500 hover:text-gray-700 p-1"
-                            onClick={cancelEditChatName}
-                            title="Cancel"
-                          >
-                            ❌
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          className={`text-left p-2 rounded text-sm truncate ${
-                            selectedChatId === chat.id &&
-                            selectedCharacterId === character.id
-                              ? "bg-blue-100 text-blue-800"
-                              : "hover:bg-gray-100"
-                          }`}
-                          onClick={() => {
-                            setSelectedCharacterId(character.id);
-                            setSelectedChatId(chat.id);
-                          }}
-                        >
-                          {chat.title}
-                        </button>
-                        <div className="flex md:opacity-50 md:group-hover:opacity-100 transition-opacity">
-                          <button
-                            className="text-blue-500 hover:text-blue-700 p-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditingChatName(
-                                character.id,
-                                chat.id,
-                                chat.title,
-                              );
-                            }}
-                            title="Edit chat name"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            className="text-red-500 hover:text-red-700 p-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setChatToDelete({
-                                characterId: character.id,
-                                chatId: chat.id,
-                              });
-                              setShowDeleteChatModal(true);
-                            }}
-                            title="Delete chat"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="p-4 text-center text-gray-400 flex flex-col gap-2 items-center">
-          <Link
-            href="https://forms.gle/q7BPmeVXnuoAJvkg7"
-            className="text-blue-500 hover:text-blue-600 text-sm underline"
-          >
-            Found a bug or have a feedback?
-          </Link>
-          <Link
-            href="/privacy"
-            className="text-blue-500 hover:text-blue-600 text-sm underline"
-          >
-            Privacy Policy
-          </Link>
-          <div className="text-sm">
-            storage used: {storageUsed}
-            {maxStorageSize && " / " + maxStorageSize}
-          </div>
-        </div>
-      </div>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        characters={characters}
+        selectedCharacterId={selectedCharacterId}
+        selectedChatId={selectedChatId}
+        editingChatId={editingChatId}
+        editChatName={editChatName}
+        storageUsed={storageUsed}
+        maxStorageSize={maxStorageSize}
+        setShowNewCharacterModal={setShowNewCharacterModal}
+        setSelectedCharacterId={setSelectedCharacterId}
+        setSelectedChatId={setSelectedChatId}
+        setCharacterToDelete={setCharacterToDelete}
+        setShowDeleteCharacterModal={setShowDeleteCharacterModal}
+        setChatToDelete={setChatToDelete}
+        setShowDeleteChatModal={setShowDeleteChatModal}
+        setEditChatName={setEditChatName}
+        setToastMessage={setToastMessage}
+        setValidcolor={setValidcolor}
+        showFullImage={showFullImage}
+        handleStoryInfoClick={handleStoryInfoClick}
+        handleBotSettingsClick={handleBotSettingsClick}
+        createNewChat={createNewChat}
+        saveChatName={saveChatName}
+        cancelEditChatName={cancelEditChatName}
+        startEditingChatName={startEditingChatName}
+      />
 
       {/* Main Content */}
       <div
@@ -2939,1237 +2064,110 @@ aiRenderer.code = ({ text, lang }) => {
           />
         )}
 
-        {/* New Character Modal */}
-        {showNewCharacterModal && (
-          <div
-            className="fixed inset-0 text-black bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowNewCharacterModal(false)}
-          >
-            <div
-              className="bg-white rounded-xl w-full max-w-md max-h-[80vh] shadow-xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Fixed Header */}
-              <div className="flex-shrink-0 p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold">Create New Character</h2>
-              </div>
+        <NewCharacterModal
+          showNewCharacterModal={showNewCharacterModal}
+          newCharacterName={newCharacterName}
+          newCharacterAlias={newCharacterAlias}
+          newCharacterPersonality={newCharacterPersonality}
+          newCharacterScenario={newCharacterScenario}
+          newCharacterFirstMessage={newCharacterFirstMessage}
+          tempCharacterImage={tempCharacterImage}
+          usejpg={usejpg}
+          setShowNewCharacterModal={setShowNewCharacterModal}
+          setNewCharacterName={setNewCharacterName}
+          setNewCharacterAlias={setNewCharacterAlias}
+          setNewCharacterPersonality={setNewCharacterPersonality}
+          setNewCharacterScenario={setNewCharacterScenario}
+          setNewCharacterFirstMessage={setNewCharacterFirstMessage}
+          setTempCharacterImage={setTempCharacterImage}
+          importCharacterCard={importCharacterCard}
+          handleImageUploadForNewCharacter={handleImageUploadForNewCharacter}
+          handleImageDeleteForNewCharacter={handleImageDeleteForNewCharacter}
+          createNewCharacter={createNewCharacter}
+        />
 
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6">
-                {/* Import Section */}
-                <div className="mb-6">
-                  <label className="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 cursor-pointer">
-                    <input
-                      type="file"
-                      accept=".json,application/json,.png,image/png"
-                      onChange={importCharacterCard}
-                      className="hidden"
-                      id="character-import"
-                    />
-                    📥 Import Character Card
-                  </label>
-                  <p className="text-xs text-gray-500 text-center mt-2">
-                    Select a JSON or Image character card file (.json, .png)
-                  </p>
-                </div>
+        <BotSettingsModal
+          showBotSettings={showBotSettings}
+          selectedCharacterId={selectedCharacterId}
+          characters={characters}
+          getCurrentCharacter={getCurrentCharacter}
+          displayCharacterImage={displayCharacterImage}
+          setShowBotSettings={setShowBotSettings}
+          setCharacters={setCharacters}
+          handleImageUpload={handleImageUpload}
+          handleImageDelete={handleImageDelete}
+          updateCharacterImage={updateCharacterImage}
+        />
 
-                <div className="space-y-4">
-                  <div className="mt-4">
-                    <h3 className="font-semibold text-gray-700 mb-2">
-                      Character Images
-                    </h3>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      {/* Thumbnail Preview */}
-                      <div className="flex flex-col items-center">
-                        <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                          {tempCharacterImage.thumbnail ? (
-                            <img
-                              src={tempCharacterImage.thumbnail}
-                              alt="Thumbnail preview"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-gray-500 text-sm">
-                              No thumbnail
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Full Image Preview */}
-                      <div className="flex flex-col items-center">
-                        <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                          {tempCharacterImage.fullImage ? (
-                            <img
-                              src={tempCharacterImage.fullImage}
-                              alt="Full image preview"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-gray-500 text-sm">
-                              No full image
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px). Click
-                      thumbnail to view full image.
-                    </p>
-                  </div>
-                  <div className="space-y-4 w-full flex flex-row justify-center">
-                    <button
-                      className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                      onClick={() => handleImageUploadForNewCharacter()}
-                    >
-                      Upload Image
-                    </button>
-                    <button
-                      className="bg-red-500 hover:bg-red-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                      onClick={() => handleImageDeleteForNewCharacter()}
-                    >
-                      Remove Image
-                    </button>
-                  </div>
-                  <div>
-                    {usejpg && (
-                      <p className="text-yellow-800 text-xs leading-tight">
-                        ⚠️ This web browser does not support WebP. JPEG is used
-                        instead. JPEG is heavier than WebP. Use WebP if
-                        possible.
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-4 w-full flex flex-col justify-center">
-                    <p className="text-xs text-gray-500">
-                      Or use the URL from external sources:
-                    </p>
-                    <input
-                      onChange={(e) => {
-                        setTempCharacterImage((prev) => ({
-                          ...prev,
-                          fullImage: e.target.value,
-                          thumbnail: e.target.value,
-                        }));
-                      }}
-                      type="text"
-                      value={tempCharacterImage.fullImage || ""}
-                      placeholder="Image URL: https://example.com/image.jpg"
-                      className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
-                    />
-                    <p className="text-yellow-800 text-xs leading-tight">
-                      ⚠️ External images may expose your IP to third-party
-                      servers
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Character Name
-                    </label>
-                    <input
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={newCharacterName}
-                      onChange={(e) => setNewCharacterName(e.target.value)}
-                      placeholder="Enter character name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Alias (Optional)
-                    </label>
-                    <input
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={newCharacterAlias}
-                      onChange={(e) => setNewCharacterAlias(e.target.value)}
-                      placeholder="e.g., Tech Expert, Artist, etc."
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Helpful for distinguishing characters with similar names
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Personality (Optional)
-                    </label>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={newCharacterPersonality}
-                      onChange={(e) =>
-                        setNewCharacterPersonality(e.target.value)
-                      }
-                      placeholder="Describe the character's personality"
-                      rows={10}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Scenario (Optional)
-                    </label>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={newCharacterScenario}
-                      onChange={(e) => setNewCharacterScenario(e.target.value)}
-                      placeholder="Set the initial scenario"
-                      rows={5}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      First Message (Optional)
-                    </label>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={newCharacterFirstMessage}
-                      onChange={(e) =>
-                        setNewCharacterFirstMessage(e.target.value)
-                      }
-                      placeholder="Custom first message for new chats (default: Hello! I'm {{char}}, how can I help you today?)"
-                      rows={5}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      This will be the bot's first message in new chats.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fixed Footer with Buttons */}
-              <div className="flex-shrink-0 border-t border-gray-200 p-6">
-                <div className="flex gap-3">
-                  <button
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-                    onClick={() => setShowNewCharacterModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors"
-                    onClick={createNewCharacter}
-                    disabled={!newCharacterName.trim()}
-                  >
-                    Create
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Bot Settings Modal */}
-        {showBotSettings && getCurrentCharacter() && (
-          <div
-            className="fixed inset-0 text-black bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowBotSettings(false)}
-          >
-            <div
-              className="bg-white rounded-xl w-full max-w-md max-h-[80vh] shadow-xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Fixed Header */}
-              <div className="flex-shrink-0 p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-gray-800">
-                    🤖 Bot Settings
-                  </h2>
-                  <button
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                    onClick={() => setShowBotSettings(false)}
-                  >
-                    &times;
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Content */}
-
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="mt-4">
-                  <h3 className="font-semibold text-gray-700 mb-2">
-                    Character Images
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {/* Thumbnail Preview */}
-                    <div className="flex flex-col items-center">
-                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                        {displayCharacterImage(
-                          selectedCharacterId || "",
-                          "thumbnail",
-                        ) || (
-                          <span className="text-gray-500 text-sm">
-                            No thumbnail
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Full Image Preview */}
-                    <div className="flex flex-col items-center">
-                      <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                        {displayCharacterImage(
-                          selectedCharacterId || "",
-                          "fullImage",
-                        ) || (
-                          <span className="text-gray-500 text-sm">
-                            No full image
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px). Click
-                    thumbnail to view full image.
-                  </p>
-                </div>
-                <div className="space-y-4 w-full flex flex-row justify-center">
-                  <button
-                    className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                    onClick={() => handleImageUpload(selectedCharacterId || "")}
-                  >
-                    Upload Image
-                  </button>
-                  <button
-                    className="bg-red-500 hover:bg-red-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                    onClick={() => handleImageDelete(selectedCharacterId || "")}
-                  >
-                    Remove Image
-                  </button>
-                </div>
-                <div className="space-y-4 w-full flex flex-col justify-center">
-                  <p className="text-xs text-gray-500">
-                    Or use the URL from external sources:
-                  </p>
-                  <input
-                    onChange={(e) => {
-                      updateCharacterImage(
-                        selectedCharacterId || "",
-                        "thumbnail",
-                        e.target.value,
-                      );
-                      updateCharacterImage(
-                        selectedCharacterId || "",
-                        "fullImage",
-                        e.target.value,
-                      );
-                    }}
-                    type="text"
-                    value={getCurrentCharacter()?.fullImage || ""}
-                    placeholder="Image URL: https://example.com/image.jpg"
-                    className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
-                  />
-                  <p className="text-yellow-800 mb-2 text-xs leading-tight">
-                    ⚠️ External images may expose your IP to third-party servers
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Character Name
-                    </label>
-                    <input
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={getCurrentCharacter()?.name || ""}
-                      onChange={(e) => {
-                        const updatedCharacters = characters.map((c) =>
-                          c.id === selectedCharacterId
-                            ? { ...c, name: e.target.value }
-                            : c,
-                        );
-                        setCharacters(updatedCharacters);
-                      }}
-                      placeholder="Character name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Alias (Optional)
-                    </label>
-                    <input
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={getCurrentCharacter()?.alias || ""}
-                      onChange={(e) => {
-                        const updatedCharacters = characters.map((c) =>
-                          c.id === selectedCharacterId
-                            ? {
-                                ...c,
-                                alias: e.target.value.trim() || undefined,
-                              }
-                            : c,
-                        );
-                        setCharacters(updatedCharacters);
-                      }}
-                      placeholder="e.g., Tech Expert, Artist, etc."
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Helpful for distinguishing characters with similar names
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Personality
-                    </label>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={getCurrentCharacter()?.personality || ""}
-                      onChange={(e) => {
-                        const updatedCharacters = characters.map((c) =>
-                          c.id === selectedCharacterId
-                            ? { ...c, personality: e.target.value }
-                            : c,
-                        );
-                        setCharacters(updatedCharacters);
-                      }}
-                      placeholder="Describe the character's personality"
-                      rows={10}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Scenario
-                    </label>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={getCurrentCharacter()?.scenario || ""}
-                      onChange={(e) => {
-                        const updatedCharacters = characters.map((c) =>
-                          c.id === selectedCharacterId
-                            ? { ...c, scenario: e.target.value }
-                            : c,
-                        );
-                        setCharacters(updatedCharacters);
-                      }}
-                      placeholder="Set the scenario"
-                      rows={5}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      First Message for New Chats
-                    </label>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={getCurrentCharacter()?.firstMessage || ""}
-                      onChange={(e) => {
-                        const updatedCharacters = characters.map((c) =>
-                          c.id === selectedCharacterId
-                            ? { ...c, firstMessage: e.target.value }
-                            : c,
-                        );
-                        setCharacters(updatedCharacters);
-                      }}
-                      placeholder="Custom first message for new chats (default: Hello! I'm {{char}}, how can I help you today?)"
-                      rows={5}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      This will only affect new chats. Existing chats will keep
-                      their current first message.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fixed Footer with Buttons */}
-              <div className="flex-shrink-0 border-t border-gray-200 p-6">
-                <div className="flex gap-3">
-                  <button
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-                    onClick={() => setShowBotSettings(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors"
-                    onClick={() => setShowBotSettings(false)}
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Settings Modal */}
-        {showSettings && (
-          <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowSettings(false)}
-          >
-            <div
-              className="bg-white text-black rounded-xl w-full max-w-md max-h-[80vh] overflow-hidden shadow-xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header with Tabs - Always visible */}
-              <div className="flex-shrink-0">
-                <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-bold text-gray-800">
-                    ⚙️ Settings
-                  </h2>
-                  <button
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                    onClick={() => setShowSettings(false)}
-                  >
-                    &times;
-                  </button>
-                </div>
-
-                {/* Tabs - Always visible */}
-                <div className="flex border-b border-gray-200 px-6">
-                  <button
-                    className={`px-4 py-3 font-medium text-sm ${
-                      settingsTab === "user"
-                        ? "text-blue-600 border-b-2 border-blue-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => setSettingsTab("user")}
-                  >
-                    👤 User
-                  </button>
-                  <button
-                    className={`px-4 py-3 font-medium text-sm ${
-                      settingsTab === "api"
-                        ? "text-blue-600 border-b-2 border-blue-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => setSettingsTab("api")}
-                  >
-                    🔑 API
-                  </button>
-                  <button
-                    className={`px-4 py-3 font-medium text-sm ${
-                      settingsTab === "prompt"
-                        ? "text-blue-600 border-b-2 border-blue-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => setSettingsTab("prompt")}
-                  >
-                    📝 Prompt
-                  </button>
-                  <button
-                    className={`px-4 py-3 font-medium text-sm ${
-                      settingsTab === "other"
-                        ? "text-blue-600 border-b-2 border-blue-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                    onClick={() => setSettingsTab("other")}
-                  >
-                    🌟 Other
-                  </button>
-                </div>
-              </div>
-
-              {/* Scrollable Content Area */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-6">
-                  {/* API Settings Tab */}
-                  {settingsTab === "api" && (
-                    <>
-                      {/* Preset Dropdown */}
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          📦 API Presets
-                        </h3>
-                        {apiPresets.length === 0 ? (
-                          <p className="text-xs text-gray-400">
-                            No presets saved yet.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            <select
-                              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                              value={selectedApiPresetId}
-                              onChange={(e) => loadApiPreset(e.target.value)}
-                            >
-                              <option value="">— Select a preset —</option>
-                              {apiPresets.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </select>
-
-                            {/* Edit / Delete buttons for selected preset */}
-                            {selectedApiPresetId && (
-                              <div className="flex gap-2">
-                                {editingApiPresetId === selectedApiPresetId ? (
-                                  <div className="space-y-2">
-                                    <input
-                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                                      value={editApiPresetName}
-                                      onChange={(e) =>
-                                        setEditApiPresetName(e.target.value)
-                                      }
-                                      placeholder="Preset name"
-                                    />
-                                    <input
-                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                                      value={editApiPresetModel}
-                                      onChange={(e) =>
-                                        setEditApiPresetModel(e.target.value)
-                                      }
-                                      placeholder="Model (e.g. deepseek/deepseek-r1)"
-                                    />
-                                    <input
-                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                                      value={editApiPresetEndpoint}
-                                      onChange={(e) =>
-                                        setEditApiPresetEndpoint(e.target.value)
-                                      }
-                                      placeholder="Endpoint URL"
-                                    />
-                                    <input
-                                      type="password"
-                                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                                      value={editApiPresetKey}
-                                      onChange={(e) =>
-                                        setEditApiPresetKey(e.target.value)
-                                      }
-                                      placeholder="API Key"
-                                    />
-                                    <div className="flex gap-2">
-                                      <button
-                                        className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm"
-                                        onClick={saveEditApiPreset}
-                                      >
-                                        ✅ Save
-                                      </button>
-                                      <button
-                                        className="flex-1 bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm"
-                                        onClick={() => {
-                                          setEditingApiPresetId(null);
-                                          setEditApiPresetName("");
-                                          setEditApiPresetModel("");
-                                          setEditApiPresetEndpoint("");
-                                          setEditApiPresetKey("");
-                                        }}
-                                      >
-                                        ❌ Cancel
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <button
-                                      className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-sm transition-colors"
-                                      onClick={() => {
-                                        const preset = apiPresets.find(
-                                          (p) => p.id === selectedApiPresetId,
-                                        );
-                                        if (preset) {
-                                          setEditingApiPresetId(preset.id);
-                                          setEditApiPresetName(preset.name);
-                                          setEditApiPresetModel(preset.model);
-                                          setEditApiPresetEndpoint(
-                                            preset.endpointUrl,
-                                          );
-                                          setEditApiPresetKey(preset.apiKey);
-                                        }
-                                      }}
-                                    >
-                                      ✏️ Edit Preset
-                                    </button>
-                                    <button
-                                      className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-lg text-sm transition-colors"
-                                      onClick={() =>
-                                        deleteApiPreset(selectedApiPresetId)
-                                      }
-                                    >
-                                      🗑️ Delete Preset
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          🤖 AI Model
-                        </h3>
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={model}
-                          onChange={(e) => {
-                            setModel(e.target.value);
-                            setSelectedApiPresetId("");
-                          }}
-                          placeholder="e.g. deepseek/deepseek-v4-flash"
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          Choose which AI model to use for responses
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          🌐 Endpoint URL
-                        </h3>
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={endpointUrl}
-                          onChange={(e) => {
-                            setEndpointUrl(e.target.value);
-                            setSelectedApiPresetId("");
-                          }}
-                          placeholder="e.g. https://openrouter.ai/api/v1/chat/completions"
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          The URL of the API endpoint to use for chat
-                          completions
-                        </p>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          🔑 API Key
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="password"
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            value={apiKey}
-                            onChange={(e) => {
-                              setApiKey(e.target.value);
-                              setValidated(false);
-                              setSelectedApiPresetId("");
-                            }}
-                            placeholder="Enter your API key"
-                          />
-                          <button
-                            className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
-                            onClick={validateApibutton}
-                          >
-                            {validating ? "Validating..." : "Validate"}
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Your API key is stored locally and never sent to any
-                          server except your API endpoint when validating or
-                          sending messages.
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">API keys:</p>
-                        <p className="text-xs text-blue-500 mt-1">
-                          <a
-                            href="https://openrouter.ai/keys"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                          >
-                            Get your API key from OpenRouter
-                          </a>
-                        </p>
-                        <p className="text-xs text-blue-500 mt-1">
-                          <a
-                            href="https://platform.openai.com/api-keys"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                          >
-                            Get your API key from OpenAI
-                          </a>
-                        </p>
-                        <p className="text-xs text-blue-500 mt-1">
-                          <a
-                            href="https://platform.deepseek.com/api_keys"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                          >
-                            Get your API key from Deepseek
-                          </a>
-                        </p>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          ℹ️ API Information
-                        </h3>
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <p>• Current model: {model}</p>
-                          <p>
-                            • API key:{" "}
-                            {validated
-                              ? "✓ Validated"
-                              : apiKey
-                                ? "❌ Not validated"
-                                : "❌ Not configured"}
-                          </p>
-                          <div className="text-xs text-blue-500 mt-1 space-y-1">
-                            • Endpoint:
-                            {endpointUrl ? (
-                              <p>{endpointUrl}</p>
-                            ) : (
-                              "❌ Not configured"
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
-                        onClick={saveApiPreset}
-                      >
-                        💾 Save Current as Preset
-                      </button>
-                      <button
-                        className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
-                        onClick={resetApiSettings}
-                      >
-                        🔄 Reset API Settings
-                      </button>
-                    </>
-                  )}
-
-                  {settingsTab === "prompt" && (
-                    <>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          🌡️ Temperature
-                        </h3>
-                        <div className="space-y-2">
-                          <input
-                            type="range"
-                            min="0"
-                            max="2"
-                            step="0.05"
-                            value={temperature}
-                            onChange={(e) =>
-                              setTemperature(parseFloat(e.target.value))
-                            }
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                          />
-                          <div className="flex justify-between text-xs text-gray-600">
-                            <span>More Focused</span>
-                            <span>{temperature.toFixed(2)}</span>
-                            <span>More Creative</span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Lower values = more focused/deterministic, Higher
-                            values = more creative/random
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          📏 Max Tokens
-                        </h3>
-                        <div className="space-y-2">
-                          <input
-                            type="range"
-                            min="0"
-                            max="4096"
-                            step="128"
-                            value={maxTokens}
-                            onChange={(e) =>
-                              setMaxTokens(parseInt(e.target.value))
-                            }
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                          />
-                          <div className="flex justify-between text-xs text-gray-600">
-                            <span>Short Responses</span>
-                            <span>{maxTokens} tokens</span>
-                            <span>Long Responses</span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Maximum length of AI responses (
-                            {maxTokens === 0
-                              ? "unlimited"
-                              : "approx. " +
-                                Math.round(maxTokens / 4) +
-                                " words"}
-                            )
-                          </p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Setting this to 0 means that the AI will use the
-                            maximum response length supported by the model.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg">
-                        <div className="p-4 flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-gray-700">
-                              🧠 Show Thinking
-                            </h3>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Only works with reasoning models (e.g.
-                              deepseek-v4)
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setShowThinking((prev) => !prev)}
-                            className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
-                              showThinking
-                                ? "bg-green-500 hover:bg-green-600"
-                                : "bg-gray-400 hover:bg-gray-500"
-                            }`}
-                          >
-                            {showThinking ? "ON" : "OFF"}
-                          </button>
-                        </div>
-                        {showThinking && (
-                          <div className="p-4">
-                            <h3 className="font-semibold text-gray-700 mb-3">
-                              🧠 Thinking Effort
-                            </h3>
-                            <select
-                              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                              value={thinkingEffort}
-                              onChange={(e) =>
-                                setThinkingEffort(
-                                  e.target.value as typeof thinkingEffort,
-                                )
-                              }
-                              disabled={!showThinking}
-                            >
-                              <option value="xhigh">X-High</option>
-                              <option value="high">High</option>
-                              <option value="medium">Medium</option>
-                              <option value="low">Low</option>
-                            </select>
-                            <p className="text-xs text-gray-500 mt-2">
-                              Only applies when thinking is enabled. Higher
-                              effort = more tokens used.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          📝 System Prompt
-                        </h3>
-                        <textarea
-                          className="w-full h-48 border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                          value={systemPrompt}
-                          onChange={(e) => setSystemPrompt(e.target.value)}
-                          placeholder="Enter the system prompt for the AI..."
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                          {
-                            "This is the base instruction set for the AI. Use {{char}} for character name and {{user}} for your name."
-                          }
-                        </p>
-                        <div className="text-xs text-blue-500 mt-1 space-y-1">
-                          <p>
-                            {
-                              "• Available placeholders: {{char}}, {{user}}, {{p1}}, {{sub}}, {{p2}}, {{poss}}, {{p3}}, {{obj}}"
-                            }
-                          </p>
-                          <p>
-                            {
-                              "• {{char}} = Character name, {{user}} = Your name"
-                            }
-                          </p>
-                          <p>
-                            {
-                              "• {{p1}}, {{sub}} = Subject pronoun, {{p2}}, {{poss}} = Possessive, {{p3}}, {{obj}} = Object pronoun"
-                            }
-                          </p>
-                          <p>
-                            {
-                              "• Works with 1 or 2 curly braces — {{user}} and {user} both work"
-                            }
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <button
-                          className="w-full bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
-                          onClick={() => setSystemPrompt(defaultprompt)}
-                        >
-                          🔄 Use Default Assistance Prompt
-                        </button>
-                        <button
-                          className="w-full bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
-                          onClick={() => setSystemPrompt(defaultpromptRP)}
-                        >
-                          🔄 Use Default Roleplay Prompt
-                        </button>
-                      </div>
-                      <button
-                        className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors mt-4"
-                        onClick={resetPromptSettings}
-                      >
-                        🔄 Reset Prompt Settings
-                      </button>
-                    </>
-                  )}
-
-                  {settingsTab === "other" && (
-                    <>
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-green-800 mb-2">
-                          Privacy Policy
-                        </h3>
-                        <Link
-                          href="/privacy"
-                          className="w-full flex justify-center items-center bg-white hover:bg-green-100 text-green-600 hover:text-green-700 border border-green-600 py-2 rounded-lg transition-colors"
-                        >
-                          View Privacy Policy
-                        </Link>
-                      </div>
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-red-800 mb-2">
-                          🗑️ Withdraw Consent
-                        </h3>
-                        <p className="text-red-700 text-sm mb-3">
-                          You can withdraw your consent and delete all data at
-                          any time:
-                        </p>
-                        <button
-                          onClick={() => {
-                            localStorage.clear();
-                            window.location.href = "/";
-                          }}
-                          className="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
-                        >
-                          Clear All Data & Reset Consent
-                        </button>
-                      </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-blue-800 mb-2">
-                          📦 Get Max Storage
-                        </h3>
-                        <button
-                          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
-                          onClick={async () =>
-                            setMaxStorageSize(
-                              await estimateLocalStorageMaxSize(),
-                            )
-                          }
-                        >
-                          Get Max Storage Size
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {settingsTab === "user" && (
-                    <>
-                      <div className="mt-4">
-                        <h3 className="font-semibold text-gray-700 mb-2">
-                          Character Images
-                        </h3>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          {/* Thumbnail Preview */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                              {userThumbnail === "" ? (
-                                <span className="text-gray-500 text-sm">
-                                  No thumbnail
-                                </span>
-                              ) : (
-                                displayUserImage("thumbnail")
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Full Image Preview */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden mb-2">
-                              {userFullImage === "" ? (
-                                <span className="text-gray-500 text-sm">
-                                  No full image
-                                </span>
-                              ) : (
-                                displayUserImage("fullImage")
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Thumbnail: ~5KB (200px), Full Image: ~75KB (1200px).
-                          Click thumbnail to view full image.
-                        </p>
-                      </div>
-                      <div className="space-y-4 w-full flex flex-row justify-center">
-                        <button
-                          className="bg-blue-500 hover:bg-blue-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                          onClick={() => handleUserImageUpload()}
-                        >
-                          Upload Image
-                        </button>
-                        <button
-                          className="bg-red-500 hover:bg-red-600 w-1/2 text-white text-sm px-3 py-1 rounded m-2"
-                          onClick={() => {
-                            setUserThumbnail("");
-                            setUserFullImage("");
-                          }}
-                        >
-                          Remove Image
-                        </button>
-                      </div>
-                      <div className="space-y-4 w-full flex flex-col justify-center">
-                        <p className="text-xs text-gray-500">
-                          Or use the URL from external sources:
-                        </p>
-                        <input
-                          onChange={(e) => {
-                            setUserFullImage(e.target.value);
-                            setUserThumbnail(e.target.value);
-                          }}
-                          type="text"
-                          value={userFullImage || ""}
-                          placeholder="Image URL: https://example.com/image.jpg"
-                          className="w-full text-sm px-3 py-1 rounded border-1 border-gray-300"
-                        />
-                        <p className="text-yellow-800 text-xs leading-tight">
-                          ⚠️ External images may expose your IP to third-party
-                          servers
-                        </p>
-                      </div>
-                      <div className="px-4">
-                        {/* Load Presets:
-                        <select
-                          value={selectedPresetId}
-                          onChange={handlePresetChange}
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value={defaultPreset.id}>Default</option>
-                          {userPresets.map((preset) => (
-                            <option key={preset.id} value={preset.id}>
-                              {preset.name}
-                            </option>
-                          ))}
-                        </select> */}
-                        <ManagePresets
-                          userPresets={userPresets}
-                          setUserPresets={setUserPresets}
-                          handlePresetDelete={handlePresetDelete}
-                          loadUserPreset={loadUserPreset}
-                        />
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-semibold text-gray-700">
-                            👤 Your Name
-                          </h3>
-                        </div>
-                        <input
-                          className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={userName}
-                          onChange={(e) => setUserName(e.target.value)}
-                          placeholder="Your name"
-                        />
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          📝 Your Description
-                        </h3>
-                        <textarea
-                          className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={userDescription}
-                          onChange={(e) => setUserDescription(e.target.value)}
-                          placeholder="Describe yourself for the AI..."
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-gray-700 mb-3">
-                          🗣️ Your Pronouns
-                        </h3>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1 font-medium">
-                              {"Subject ({{p1}})"}
-                            </label>
-                            <input
-                              className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              value={userPronouns.p1}
-                              onChange={(e) =>
-                                setUserPronouns({
-                                  ...userPronouns,
-                                  p1: e.target.value,
-                                })
-                              }
-                              placeholder="he/she/they"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1 font-medium">
-                              {"Possessive ({{p2}})"}
-                            </label>
-                            <input
-                              className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              value={userPronouns.p2}
-                              onChange={(e) =>
-                                setUserPronouns({
-                                  ...userPronouns,
-                                  p2: e.target.value,
-                                })
-                              }
-                              placeholder="his/her/their"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1 font-medium">
-                              {"Object ({{p3}})"}
-                            </label>
-                            <input
-                              className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              value={userPronouns.p3}
-                              onChange={(e) =>
-                                setUserPronouns({
-                                  ...userPronouns,
-                                  p3: e.target.value,
-                                })
-                              }
-                              placeholder="him/her/them"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                        onClick={saveUserPreset}
-                      >
-                        Save User Settings
-                      </button>
-                      <button
-                        className="w-full bg-red-100 text-red-600 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
-                        onClick={resetNames}
-                      >
-                        🔄 Reset User Settings
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons - Always visible at bottom */}
-              <div className="flex-shrink-0 border-t border-gray-200 p-4">
-                <div className="flex justify-between gap-3">
-                  <button
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 flex-1 justify-center"
-                    onClick={clearChat}
-                  >
-                    🗑️ Clear Chat
-                  </button>
-                  <button
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 flex-1 justify-center"
-                    onClick={() => setShowSettings(false)}
-                  >
-                    ✅ Done
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <SettingsModal
+          showSettings={showSettings}
+          settingsTab={settingsTab}
+          model={model}
+          endpointUrl={endpointUrl}
+          apiKey={apiKey}
+          validated={validated}
+          validating={validating}
+          apiPresets={apiPresets}
+          selectedApiPresetId={selectedApiPresetId}
+          editingApiPresetId={editingApiPresetId}
+          editApiPresetName={editApiPresetName}
+          editApiPresetModel={editApiPresetModel}
+          editApiPresetEndpoint={editApiPresetEndpoint}
+          editApiPresetKey={editApiPresetKey}
+          temperature={temperature}
+          maxTokens={maxTokens}
+          showThinking={showThinking}
+          thinkingEffort={thinkingEffort}
+          systemPrompt={systemPrompt}
+          defaultprompt={defaultprompt}
+          defaultpromptRP={defaultpromptRP}
+          userName={userName}
+          userDescription={userDescription}
+          userPronouns={userPronouns}
+          userThumbnail={userThumbnail}
+          userFullImage={userFullImage}
+          userPresets={userPresets}
+          maxStorageSize={maxStorageSize}
+          setShowSettings={setShowSettings}
+          setSettingsTab={setSettingsTab}
+          setModel={setModel}
+          setEndpointUrl={setEndpointUrl}
+          setApiKey={setApiKey}
+          setValidated={setValidated}
+          setSelectedApiPresetId={setSelectedApiPresetId}
+          setEditingApiPresetId={setEditingApiPresetId}
+          setEditApiPresetName={setEditApiPresetName}
+          setEditApiPresetModel={setEditApiPresetModel}
+          setEditApiPresetEndpoint={setEditApiPresetEndpoint}
+          setEditApiPresetKey={setEditApiPresetKey}
+          setTemperature={setTemperature}
+          setMaxTokens={setMaxTokens}
+          setShowThinking={setShowThinking}
+          setThinkingEffort={setThinkingEffort}
+          setSystemPrompt={setSystemPrompt}
+          setUserName={setUserName}
+          setUserDescription={setUserDescription}
+          setUserPronouns={setUserPronouns}
+          setUserThumbnail={setUserThumbnail}
+          setUserFullImage={setUserFullImage}
+          setUserPresets={setUserPresets}
+          setMaxStorageSize={setMaxStorageSize}
+          validateApibutton={validateApibutton}
+          loadApiPreset={loadApiPreset}
+          saveApiPreset={saveApiPreset}
+          deleteApiPreset={deleteApiPreset}
+          saveEditApiPreset={saveEditApiPreset}
+          resetApiSettings={resetApiSettings}
+          resetPromptSettings={resetPromptSettings}
+          resetNames={resetNames}
+          clearChat={clearChat}
+          handleUserImageUpload={handleUserImageUpload}
+          displayUserImage={displayUserImage}
+          handlePresetDelete={handlePresetDelete}
+          loadUserPreset={loadUserPreset}
+          saveUserPreset={saveUserPreset}
+          estimateLocalStorageMaxSize={estimateLocalStorageMaxSize}
+        />
         {/* Delete Character Warning Modal */}
         {showDeleteCharacterModal && characterToDelete && (
           <ConfirmModal
@@ -4640,11 +2638,14 @@ aiRenderer.code = ({ text, lang }) => {
 
               <p className="text-xs text-gray-500 text-center">
                 <span>AI can produce incorrect or misleading responses.</span>
-                {isMobile ? null:(<span className="hidden lg:inline">
-                  {" "}Always verify information from reliable sources.
-                </span>)}
+                {isMobile ? null : (
+                  <span className="hidden lg:inline">
+                    {" "}
+                    Always verify information from reliable sources.
+                  </span>
+                )}
               </p>
-              {isMobile ? null:(
+              {isMobile ? null : (
                 <p className="text-xs text-gray-500 text-end">
                   Press ⏎ Enter to send, ⇧ Shift+⏎ Enter for new line
                 </p>
