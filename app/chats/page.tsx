@@ -140,8 +140,10 @@ export default function AIChatRoom() {
 
   const [usejpg, setUsejpg] = useState<boolean>(false);
 
-  const isIPad = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)|| isIPad;
+  const isIPad =
+    navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  const isMobile =
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIPad;
 
   const [toastMessage, setToastMessage] = useState("");
   const defaultprompt = defaultpromptx;
@@ -1583,6 +1585,25 @@ export default function AIChatRoom() {
   const aiRenderer = new marked.Renderer();
 
   aiRenderer.code = ({ text, lang }) => {
+    if (lang === "svg") {
+      // Store SVG as a data attribute to preserve it as plain text
+      const encoded = encodeURIComponent(text);
+      return (
+        `<div class="svg-render-wrapper" data-svg="${encoded}">` +
+        `<div class="code-block-header">` +
+        `<span class="code-lang">svg</span>` +
+        `<button class="copy-code-btn" onclick="
+      const svg = decodeURIComponent(this.closest('.svg-render-wrapper').dataset.svg);
+      navigator.clipboard.writeText(svg);
+      this.textContent = '✅ Copied';
+      setTimeout(() => this.textContent = '📋 Copy', 2000);
+    ">📋 Copy</button>` +
+        `</div>` +
+        `<div class="svg-render-output">${text}</div>` +
+        `</div>`
+      );
+    }
+
     const escaped = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -1664,7 +1685,10 @@ export default function AIChatRoom() {
     }
 
     const rawHtml = marked.parse(escaped, { renderer: aiRenderer });
-    return typeof rawHtml === "string" ? rawHtml : escaped;
+    const result = typeof rawHtml === "string" ? rawHtml : escaped;
+
+    const sanitized = result.replace(/<script[\s\S]*?<\/script>/gi, "");
+    return sanitized;
   };
 
   const sendMessage = async (): Promise<void> => {

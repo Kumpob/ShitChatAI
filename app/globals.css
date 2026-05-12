@@ -240,3 +240,23 @@ body {
   margin: 0;
   border-radius: 0;
 }
+
+.svg-render-wrapper {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin: 0.5rem 0;
+  border: 1px solid #d1d5db;
+}
+
+.svg-render-output {
+  background: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.svg-render-output svg {
+  max-width: 100%;
+  height: auto;
+}
