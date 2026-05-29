@@ -113,6 +113,8 @@ All data (characters, chats, images, presets) is stored **locally in your browse
   * [OpenAI](https://platform.openai.com/api-keys)
   * [DeepSeek](https://platform.deepseek.com/api_keys)
   * Any OpenAI-compatible endpoint
+> [!NOTE]
+> If you're using a local LLM such as LM Studio, make sure CORS is enabled in the server settings.
 
 Your API key is stored locally and only sent to your configured endpoint.
 
