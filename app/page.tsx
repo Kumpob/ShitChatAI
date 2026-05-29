@@ -129,7 +129,9 @@ export default function HomePage() {
             to   { opacity: 1; transform: translateY(0); }
           }
         `}</style>
-        <img src="/logo.png" alt="Logo" className="mx-auto mb-6 w-32" />
+        <div style={{ animation: "fadeIn 0.5s ease both" }}>
+        <img src="/logo.png" alt="Logo" className="mx-auto mb-6 w-32 drop-shadow-lg" />
+        </div>
         <h1
           className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight text-center mb-4 drop-shadow-lg"
           style={{ animation: "fadeIn 0.7s ease both" }}
@@ -147,6 +149,7 @@ export default function HomePage() {
         <Link
           href="/chats"
           className="bg-white hover:bg-blue-50 text-blue-600 font-semibold py-4 px-10 rounded-xl shadow-xl transform transition duration-300 ease-in-out hover:scale-105"
+          style={{ animation: "fadeInSlow 1.1s ease both" }}
         >
           Enter
         </Link>
