@@ -28,7 +28,7 @@ export default function HomePage() {
               🔞 Age Verification
             </h2>
             <p className="text-gray-600 mb-4">
-              You must be <strong>13 years or older</strong> to use ShitchatAI,
+              You must be <strong>18 years or older</strong> to use ShitchatAI,
               in compliance with COPPA and GDPR regulations.
             </p>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
@@ -57,14 +57,14 @@ export default function HomePage() {
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <p className="text-green-800 text-sm">
                 <strong>✓ All data stays on your device</strong> - Nothing is
-                sent to our servers except API requests to OpenRouter.
+                sent to our servers except API requests to AI endpoints of your choice.
               </p>
             </div>
           </div>
 
           {/* Legal Links */}
           <div className="text-center text-gray-500 text-xs mb-4">
-            By clicking "I'm 13+ & Accept", you confirm you're 13+ and agree to
+            By clicking "I'm 18+ & Accept", you confirm you're 18+ and agree to
             our{" "}
             <Link
               href="/privacy"
@@ -129,7 +129,7 @@ export default function HomePage() {
             to   { opacity: 1; transform: translateY(0); }
           }
         `}</style>
-
+        <img src="/logo.png" alt="Logo" className="mx-auto mb-6 w-32" />
         <h1
           className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight text-center mb-4 drop-shadow-lg"
           style={{ animation: "fadeIn 0.7s ease both" }}
