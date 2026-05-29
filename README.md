@@ -167,6 +167,7 @@ Nothing is uploaded — not your chats, API key, characters, images, or attached
 ### 📱 **Mobile limitations**
 
 iOS Safari has lower localStorage limits (≈ 2–3 MB). Avoid large images if you're on mobile.
+PDF file upload is not available on iOS Safari.
 
 ### 🧠 **Thinking models**
 
