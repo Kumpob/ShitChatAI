@@ -65,21 +65,37 @@ export const handleAPIRequestFunc = async (
   let aiResponse = "";
   let aiThinking = "";
   try {
+    // let systemMessage = systemPrompt;
+    // systemMessage += `\n\nCharacter Name: ${character.name}`;
+    // if (character.personality.trim())
+    //   systemMessage += `\n\nCharacter Personality: ${character.personality}`;
+    // if (character.scenario.trim())
+    //   systemMessage += `\n\nScenario: ${character.scenario}`;
+    // systemMessage += `\n\nUser Name: ${userName}`;
+    // if (userDescription.trim())
+    //   systemMessage += `\n\nUser Description: ${userDescription}`;
+    // if (
+    //   userPronouns.p1.trim() ||
+    //   userPronouns.p2.trim() ||
+    //   userPronouns.p3.trim()
+    // )
+    //   systemMessage += `\n\nUser Pronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
     let systemMessage = systemPrompt;
-    systemMessage += `\n\nCharacter Name: ${character.name}`;
+    systemMessage += `\n<${character.name}'s Persona>\nName: ${character.name}`;
     if (character.personality.trim())
-      systemMessage += `\n\nCharacter Personality: ${character.personality}`;
+      systemMessage += `\nDescription: ${character.personality}</${character.name}'s Persona>`;
     if (character.scenario.trim())
-      systemMessage += `\n\nScenario: ${character.scenario}`;
-    systemMessage += `\n\nUser Name: ${userName}`;
+      systemMessage += `\n<Scenario>\n${character.scenario}</Scenario>`;
+    systemMessage += `\n<${userName}'s Persona>\nName: ${userName}`;
     if (userDescription.trim())
-      systemMessage += `\n\nUser Description: ${userDescription}`;
+      systemMessage += `\nDescription: ${userDescription}`;
     if (
       userPronouns.p1.trim() ||
       userPronouns.p2.trim() ||
       userPronouns.p3.trim()
     )
-      systemMessage += `\n\nUser Pronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
+      systemMessage += `\nPronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
+    systemMessage += `</${userName}'s Persona}>\n`;
     systemMessage = systemMessage
       .replace(/\{\{char\}\}/g, character.name)
       .replace(/\{char\}/g, character.name)
@@ -99,7 +115,26 @@ export const handleAPIRequestFunc = async (
       .replace(/\{obj\}/g, userPronouns.p3);
 
     console.log("System Message:", systemMessage);
-    const messagesWithNames = messages.map((m) => {
+    // add notes to the last message
+    const notes =
+      "\nSYSTEM NOTE: {{user}} uses {{p1}}/{{p2}}/{{p3}} pronouns. Always use these pronouns when referring to {{user}}.";
+    const lastUserIndex = messages.findLastIndex((m) => m.sender === "user");
+    const messagesAddNotes = messages.map((m, index) => {
+      if (index === lastUserIndex) {
+        return {
+          ...m,
+          text: m.text + notes,
+        };
+      }
+      return m;
+    });
+    const messagesAddSender = messagesAddNotes.map((m) => {
+      if (m.sender === "user") {
+        return { ...m, text: "{{user}}: "+m.text };
+      }
+      return m;
+    });
+    const messagesWithNames = messagesAddSender.map((m) => {
       const role = m.sender === "user" ? "user" : "assistant";
       let content = m.text;
       content = content.replace(/\{\{user\}\}/g, userName);

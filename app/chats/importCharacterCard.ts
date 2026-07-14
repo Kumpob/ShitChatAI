@@ -24,6 +24,7 @@ export const importCharacterCardFunc = (
     setNewCharacterScenario,
     setNewCharacterPersonality,
     setNewCharacterStoryContent,
+    setTempCharacterImage,
     setToastMessage,
   } = setters;
 
@@ -59,6 +60,10 @@ export const importCharacterCardFunc = (
           .join("\n\n")
           .trim();
 
+        const avatar = characterData.avatar || "";
+        if (avatar) {
+          setTempCharacterImage({ fullImage: avatar, thumbnail: avatar });
+        }
         // Fill the form fields with imported data
         setNewCharacterName(name);
         setNewCharacterAlias("");
