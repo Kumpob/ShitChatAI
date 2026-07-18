@@ -149,6 +149,7 @@ export default function AIChatRoom() {
   const defaultprompt = defaultpromptx;
   const defaultpromptRP = defaultpromptRPx;
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [sendPronouns, setSendPronouns] = useState(false);
   const [showThinking, setShowThinking] = useState(false);
   const [thinkingEffort, setThinkingEffort] = useState<
     "xhigh" | "high" | "medium" | "low"
@@ -254,6 +255,7 @@ export default function AIChatRoom() {
 
     const savedvalidated = localStorage.getItem("chatValidated");
     const savedSystemPrompt = localStorage.getItem("chatSystemPrompt");
+    const savedSendPronouns = localStorage.getItem("chatSendPronouns");
     const savedshowthinking = localStorage.getItem("chatShowThinking");
     const savedThinkingEffort = localStorage.getItem("chatThinkingEffort");
 
@@ -340,6 +342,7 @@ export default function AIChatRoom() {
 
     if (savedvalidated) setValidated(JSON.parse(savedvalidated));
     if (savedSystemPrompt) setSystemPrompt(savedSystemPrompt);
+    if (savedSendPronouns) setSendPronouns(savedSendPronouns === "true");
     if (savedshowthinking) setShowThinking(savedshowthinking === "true");
     if (savedThinkingEffort)
       setThinkingEffort(
@@ -367,6 +370,7 @@ export default function AIChatRoom() {
 
       localStorage.setItem("chatValidated", JSON.stringify(validated));
       localStorage.setItem("chatSystemPrompt", systemPrompt);
+      localStorage.setItem("chatSendPronouns", sendPronouns.toString());
       localStorage.setItem("chatShowThinking", showThinking.toString());
       localStorage.setItem("chatThinkingEffort", thinkingEffort);
 
@@ -410,6 +414,7 @@ export default function AIChatRoom() {
     apiKey,
     validated,
     systemPrompt,
+    sendPronouns,
     showThinking,
     temperature,
     maxTokens,
@@ -1463,6 +1468,7 @@ export default function AIChatRoom() {
       },
       {
         systemPrompt,
+        sendPronouns,
         model,
         temperature,
         showThinking,
@@ -1485,6 +1491,7 @@ export default function AIChatRoom() {
     return regenerateResponseFunc(fromIndex, {
       // APIRequestContext fields
       systemPrompt,
+      sendPronouns,
       model,
       temperature,
       showThinking,
@@ -2143,6 +2150,7 @@ export default function AIChatRoom() {
           showThinking={showThinking}
           thinkingEffort={thinkingEffort}
           systemPrompt={systemPrompt}
+          sendPronouns={sendPronouns}
           defaultprompt={defaultprompt}
           defaultpromptRP={defaultpromptRP}
           userName={userName}
@@ -2169,6 +2177,7 @@ export default function AIChatRoom() {
           setShowThinking={setShowThinking}
           setThinkingEffort={setThinkingEffort}
           setSystemPrompt={setSystemPrompt}
+          setSendPronouns={setSendPronouns}
           setUserName={setUserName}
           setUserDescription={setUserDescription}
           setUserPronouns={setUserPronouns}

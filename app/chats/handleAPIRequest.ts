@@ -3,6 +3,7 @@ import { Character, Message } from "./interfaces";
 export interface APIRequestContext {
   // State values
   systemPrompt: string;
+  sendPronouns: boolean;
   model: string;
   temperature: number;
   showThinking: boolean;
@@ -46,6 +47,7 @@ export const handleAPIRequestFunc = async (
   } = params;
   const {
     systemPrompt,
+    sendPronouns,
     model,
     temperature,
     showThinking,
@@ -89,11 +91,11 @@ export const handleAPIRequestFunc = async (
     systemMessage += `\n<${userName}'s Persona>\nName: ${userName}`;
     if (userDescription.trim())
       systemMessage += `\nDescription: ${userDescription}`;
-    if (
+    if (sendPronouns && (
       userPronouns.p1.trim() ||
       userPronouns.p2.trim() ||
       userPronouns.p3.trim()
-    )
+    ))
       systemMessage += `\nPronouns: ${userPronouns.p1}/${userPronouns.p2}/${userPronouns.p3}`;
     systemMessage += `</${userName}'s Persona}>\n`;
     systemMessage = systemMessage
@@ -116,8 +118,12 @@ export const handleAPIRequestFunc = async (
 
     console.log("System Message:", systemMessage);
     // add notes to the last message
-    const notes =
-      "\nSYSTEM NOTE: {{user}} uses {{p1}}/{{p2}}/{{p3}} pronouns. Always use these pronouns when referring to {{user}}.";
+    let notes = "";
+    if (sendPronouns) {
+      notes =
+        "\nSYSTEM NOTE: {{user}} uses {{p1}}/{{p2}}/{{p3}} pronouns. Always use these pronouns when referring to {{user}}.";
+    }
+
     const lastUserIndex = messages.findLastIndex((m) => m.sender === "user");
     const messagesAddNotes = messages.map((m, index) => {
       if (index === lastUserIndex) {
@@ -130,7 +136,7 @@ export const handleAPIRequestFunc = async (
     });
     const messagesAddSender = messagesAddNotes.map((m) => {
       if (m.sender === "user") {
-        return { ...m, text: "{{user}}: "+m.text };
+        return { ...m, text: "{{user}}: " + m.text };
       }
       return m;
     });
@@ -157,7 +163,7 @@ export const handleAPIRequestFunc = async (
     });
     console.log("Messages with names:", messagesWithNames);
     if (regen) {
-      systemMessage += `\n\nRegenerate id differently.`;
+      systemMessage += ``;
     }
     const requestBody: any = {
       model: model,

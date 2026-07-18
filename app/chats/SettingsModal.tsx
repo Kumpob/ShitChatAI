@@ -26,6 +26,7 @@ interface SettingsModalProps {
   showThinking: boolean;
   thinkingEffort: "xhigh" | "high" | "medium" | "low";
   systemPrompt: string;
+  sendPronouns: boolean;
   defaultprompt: string;
   defaultpromptRP: string;
   // User tab
@@ -53,9 +54,12 @@ interface SettingsModalProps {
   setTemperature: (v: number) => void;
   setMaxTokens: (v: number) => void;
   setShowThinking: React.Dispatch<React.SetStateAction<boolean>>;
-  setThinkingEffort: React.Dispatch<React.SetStateAction<"xhigh" | "high" | "medium" | "low">>;
+  setThinkingEffort: React.Dispatch<
+    React.SetStateAction<"xhigh" | "high" | "medium" | "low">
+  >;
   setMaxStorageSize: React.Dispatch<React.SetStateAction<string>>;
   setSystemPrompt: (v: string) => void;
+  setSendPronouns: (v: boolean) => void;
   setUserName: (v: string) => void;
   setUserDescription: (v: string) => void;
   setUserPronouns: (v: { p1: string; p2: string; p3: string }) => void;
@@ -100,6 +104,7 @@ export const SettingsModal = ({
   showThinking,
   thinkingEffort,
   systemPrompt,
+  sendPronouns,
   defaultprompt,
   defaultpromptRP,
   userName,
@@ -126,6 +131,7 @@ export const SettingsModal = ({
   setShowThinking,
   setThinkingEffort,
   setSystemPrompt,
+  setSendPronouns,
   setUserName,
   setUserDescription,
   setUserPronouns,
@@ -583,7 +589,38 @@ export const SettingsModal = ({
                     </div>
                   )}
                 </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-gray-700 mb-3">
+                    🧑 Send Pronouns?
+                  </h3>
 
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Send your pronouns to the AI.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSendPronouns(!sendPronouns)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                        sendPronouns ? "bg-blue-600" : "bg-gray-300"
+                      }`}
+                      role="switch"
+                      aria-checked={sendPronouns}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                          sendPronouns ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Turn off if it affects grammar corrections.
+                  </p>
+                  <p className="text-xs text-gray-600">
+                     Will still replace shorthands with pronouns.
+                  </p>
+                </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-gray-700 mb-3">
                     📝 System Prompt
